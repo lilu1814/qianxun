@@ -63,6 +63,9 @@ export class ChapterOne3D {
   private chapterNumber: 1 | 2 = 1;
   private bathStage: 'bridge' | 'boiler' | 'office' = 'bridge';
   private carryingCoal: THREE.Mesh | null = null;
+  private hakuMixer: THREE.AnimationMixer | null = null;
+  private hakuAction: THREE.AnimationAction | null = null;
+  private hakuModel: THREE.Object3D | null = null;
   private townTime = 0;
   private townNight = false;
   private townMood: 'day' | 'dusk' | 'night' = 'day';
@@ -288,6 +291,8 @@ export class ChapterOne3D {
     await wait(30);
     onProgress(0.1, '千尋を呼ぶ');
     await this.loadChihiro(onProgress);
+    onProgress(0.72, '白龍を呼ぶ');
+    await this.loadHaku(onProgress);
     onProgress(0.99, '風が来た');
     await wait(120);
     this.setWorld('field');
@@ -366,6 +371,96 @@ export class ChapterOne3D {
 
   get currentChapter(): 1 | 2 {
     return this.chapterNumber;
+  }
+
+  private loadHaku(onProgress: (progress: number, label?: string) => void): Promise<void> {
+    return new Promise((resolve) => {
+      const loader = new GLTFLoader();
+      loader.load(
+        '/models/haku.glb',
+        (gltf) => {
+          const model = gltf.scene;
+          model.traverse((object) => {
+            if (object instanceof THREE.Mesh) {
+              object.castShadow = true;
+              object.receiveShadow = false;
+              const materials = Array.isArray(object.material) ? object.material : [object.material];
+              materials.forEach((material) => {
+                if (material instanceof THREE.MeshStandardMaterial) {
+                  material.roughness = Math.min(0.92, Math.max(0.55, material.roughness));
+                  material.metalness = Math.min(0.08, material.metalness);
+                  material.envMapIntensity = 0.35;
+                  material.needsUpdate = true;
+                }
+              });
+            }
+          });
+          const box = new THREE.Box3().setFromObject(model);
+          const size = box.getSize(new THREE.Vector3());
+          const scale = 1.72 / Math.max(0.001, size.y);
+          model.scale.setScalar(scale);
+          const scaledBox = new THREE.Box3().setFromObject(model);
+          model.position.y -= scaledBox.min.y;
+          // Keep the procedural Haku as a fallback if the GLB ever fails to load.
+          this.bathhouse.haku.children.forEach((child) => {
+            if (!(child instanceof THREE.Light)) child.visible = false;
+          });
+          this.bathhouse.haku.add(model);
+          this.hakuModel = model;
+          if (gltf.animations.length) {
+            this.hakuMixer = new THREE.AnimationMixer(model);
+            const clip = gltf.animations.find((animation) => /walk|turn/i.test(animation.name)) ?? gltf.animations[0];
+            this.hakuAction = this.hakuMixer.clipAction(clip);
+            this.hakuAction.setLoop(THREE.LoopOnce, 1);
+            this.hakuAction.clampWhenFinished = true;
+            this.hakuAction.play();
+            this.hakuAction.paused = true;
+            this.hakuMixer.update(0);
+          }
+          resolve();
+        },
+        (event) => {
+          const total = event.total || 530256;
+          const p = 0.72 + Math.min(0.2, (event.loaded / total) * 0.2);
+          onProgress(p, '白龍を呼ぶ');
+        },
+        (error) => {
+          console.warn('Haku GLB failed to load; using procedural fallback.', error);
+          resolve();
+        },
+      );
+    });
+  }
+
+  private startHakuWalk(): void {
+    if (!this.hakuAction) return;
+    this.hakuAction.reset();
+    this.hakuAction.paused = false;
+    this.hakuAction.timeScale = 1;
+    this.hakuAction.setLoop(THREE.LoopOnce, 1);
+    this.hakuAction.clampWhenFinished = true;
+    this.hakuAction.play();
+  }
+
+  private stopHakuWalk(): void {
+    if (!this.hakuAction) return;
+    this.hakuAction.time = this.hakuAction.getClip().duration;
+    this.hakuAction.timeScale = -2;
+    this.hakuAction.paused = false;
+    this.hakuAction.setLoop(THREE.LoopOnce, 1);
+    this.hakuAction.clampWhenFinished = true;
+    this.hakuAction.play();
+  }
+
+  private resetHaku(): void {
+    this.bathhouse.haku.position.set(0, 0.02, 6.4);
+    this.bathhouse.haku.rotation.y = Math.PI;
+    if (this.hakuAction) {
+      this.hakuAction.reset();
+      this.hakuAction.paused = true;
+      this.hakuAction.timeScale = 1;
+      this.hakuMixer?.update(0);
+    }
   }
 
   prepareTitle(): void {
@@ -575,6 +670,7 @@ export class ChapterOne3D {
     this.bathStage = 'bridge';
     this.bathhouse.setStage('bridge');
     this.bathhouse.setHakuWalking(false);
+    this.resetHaku();
     this.player.position.copy(this.bathhouse.playerStart);
     this.player.rotation.y = 0;
     this.player.visible = true;
@@ -613,6 +709,7 @@ export class ChapterOne3D {
     this.ui.showBreathHint();
     this.ui.setObjective('Eを押したまま息を止め、白龍について橋を渡る');
     this.bathhouse.setHakuWalking(true);
+    this.startHakuWalk();
     this.camMode = 'follow';
     this.camYaw = Math.PI;
     this.camPitch = 0.2;
@@ -628,6 +725,7 @@ export class ChapterOne3D {
     this.breathActive = false;
     this.ui.hideBreathHint();
     this.bathhouse.setHakuWalking(false);
+    this.stopHakuWalk();
     this.setCinematic(new THREE.Vector3(2.0, 2.1, 14.5), new THREE.Vector3(0, 2.2, 24.5), 1.6);
     await this.ui.say('白龍', '中に入ったら、何を見ても声を出すな。');
     await this.ui.say('千尋', 'あなたは？');
@@ -1301,6 +1399,7 @@ export class ChapterOne3D {
       this.meadow.pollen.position.y = Math.sin(t * 0.35) * 0.12;
     } else if (this.world === 'bathhouse') {
       this.bathhouse.update(t, dt);
+      this.hakuMixer?.update(dt);
       this.updateBreathAndGhosts(dt);
     } else {
       const target = this.townNight

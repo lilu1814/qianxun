@@ -2544,6 +2544,9 @@ export function buildBathhouseWorld(): BathhouseWorld {
   const haku = createHaku();
   haku.position.set(0, 0.02, 6.4);
   haku.rotation.y = Math.PI;
+  const hakuFill = new THREE.PointLight(0xffe0bd, 2.4, 5.5, 2);
+  hakuFill.position.set(0, 2.2, 0.2);
+  haku.add(hakuFill);
   exterior.add(haku);
 
   const ghosts: THREE.Group[] = [];
@@ -2782,10 +2785,15 @@ export function buildBathhouseWorld(): BathhouseWorld {
       fireLight.intensity = 10 + Math.sin(time * 7) * 2;
     }
     if (stage === 'bridge') {
-      const target = walking ? 18.8 : 6.4;
-      haku.position.z += (target - haku.position.z) * (1 - Math.exp(-dt * 1.6));
-      haku.position.y = 0.02 + Math.abs(Math.sin(time * 4.4)) * (walking ? 0.025 : 0.006);
-      haku.rotation.y = Math.PI + (walking ? 0 : Math.sin(time * 0.8) * 0.04);
+      // The imported Haku clip is a five-second turn-and-step performance.
+      // Move him at a matching pace so the feet and body turn stay in sync.
+      if (walking) {
+        haku.position.z = Math.min(18.8, haku.position.z + dt * 2.48);
+      } else {
+        haku.position.z += (6.4 - haku.position.z) * (1 - Math.exp(-dt * 1.2));
+      }
+      haku.position.y = 0.02;
+      haku.rotation.y = Math.PI + (walking ? 0 : Math.sin(time * 0.8) * 0.025);
     }
   };
 
