@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#0a0d0d" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="description" content="『千と千尋の神隠し』同人3Dインタラクティブストーリー：第一章「トンネル」、第二章「契約」。古い門から湯屋へ、神隠しが始まる。" />
+    <title>神隠し · 千と千尋の神隠し｜第一・二章</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main id="app">
+      <section id="stage" aria-label="神隠し · 千と千尋の神隠し 3Dゲーム画面">
+        <canvas id="scene3d" width="1280" height="720"></canvas>
+        <div class="color-grade" aria-hidden="true"></div>
+        <div class="vignette" aria-hidden="true"></div>
+        <div class="film-grain" aria-hidden="true"></div>
+
+        <header id="hud" class="hud hidden">
+          <div class="chapter-mark">
+            <span id="chapter-no" class="chapter-no">第一章</span>
+            <span class="chapter-title"><span id="chapter-name" class="chapter-name">トンネル</span><span id="chapter-name-zh" class="chapter-name-zh">隧道</span></span>
+          </div>
+          <div class="hud-actions">
+            <button id="sound-btn" class="round-btn" aria-label="サウンドのオン／オフ" title="サウンドのオン／オフ">音</button>
+            <button id="journal-btn" class="round-btn" aria-label="旅の手記" title="旅の手記">記</button>
+          </div>
+        </header>
+
+        <div id="objective" class="objective hidden">
+          <span class="objective-dot"></span>
+          <span class="objective-copy"><span id="objective-text"></span><small id="objective-text-zh" class="objective-text-zh"></small></span>
+        </div>
+
+        <div id="dialogue" class="dialogue hidden" role="dialog" aria-live="polite">
+          <div class="dialogue-rule"></div>
+          <div id="speaker" class="speaker"><span id="speaker-name"></span><small id="speaker-zh" class="speaker-zh"></small></div>
+          <p id="dialogue-text" class="dialogue-text"></p>
+          <p id="dialogue-translation" class="dialogue-translation hidden" lang="zh-CN"></p>
+          <div class="continue-mark" aria-hidden="true"><span></span></div>
+        </div>
+
+        <div id="choices" class="choices hidden" role="group" aria-label="選択肢"></div>
+
+        <div id="activity-hint" class="activity-hint hidden">
+          <span id="activity-hint-text"></span>
+        </div>
+
+        <div id="toast" class="toast hidden" role="status"></div>
+
+        <div id="interact-hint" class="interact-hint hidden" role="status">
+          <kbd>E</kbd>
+          <span class="hint-copy"><span id="interact-hint-text">調べる</span><small id="interact-hint-zh" class="hint-zh"></small></span>
+        </div>
+
+        <div id="breath-hint" class="breath-hint hidden" role="status">
+          <div class="breath-line"><kbd>E</kbd><span id="breath-label">息を止める</span></div>
+          <small id="breath-label-zh" class="hint-zh">屏住呼吸</small>
+          <div class="breath-track"><i id="breath-fill"></i></div>
+        </div>
+
+        <div id="controls-hint" class="controls-hint hidden">
+          <span class="keycap">A / D</span>
+          <span>左旋回 / 右旋回</span>
+          <span class="controls-dot"></span>
+          <span class="keycap">W / S</span>
+          <span>前進 / 後退</span>
+          <span class="controls-dot"></span>
+          <span class="keycap">マウス</span>
+          <span>視点</span>
+          <span class="controls-dot"></span>
+          <span class="keycap">スペース</span>
+          <span>進める</span>
+          <span class="controls-dot"></span>
+          <span class="keycap">E</span>
+          <span>調べる / 息止め</span>
+        </div>
+
+        <div id="joystick" class="joystick hidden" aria-hidden="true">
+          <div class="joystick-ring"></div>
+          <div class="joystick-knob"></div>
+        </div>
+
+        <div id="chapter-card" class="chapter-card hidden" aria-hidden="true">
+          <div class="chapter-card-inner">
+            <div class="chapter-card-kicker">SPIRITED AWAY · 3D JOURNEY</div>
+            <div id="chapter-card-number" class="chapter-card-number">第一章</div>
+            <div id="chapter-card-title" class="chapter-card-title">トンネル</div>
+            <div id="chapter-card-title-zh" class="chapter-card-title-zh">隧道</div>
+            <div class="chapter-card-line"></div>
+            <div id="chapter-card-subtitle" class="chapter-card-subtitle"></div>
+            <div id="chapter-card-translation" class="chapter-card-translation hidden" lang="zh-CN"></div>
+          </div>
+        </div>
+
+        <section id="title-screen" class="title-screen hidden">
+          <div class="title-wash"></div>
+          <div class="title-content">
+            <div class="title-seal">千</div>
+            <div class="title-eyebrow">A FAN-MADE 3D INTERACTIVE JOURNEY</div>
+            <div class="title-eyebrow-zh">同人 3D 互动之旅</div>
+            <h1 class="title-main">神隠し</h1>
+            <div class="title-main-zh">神隐</div>
+            <div class="title-sub">千と千尋の神隠し · 3D インタラクティブストーリー</div>
+            <div class="title-sub-zh">千与千寻 · 3D 互动叙事</div>
+            <p class="title-tag">自分の名前を忘れないで。</p>
+            <p class="title-tag-zh">不要忘记自己的名字。</p>
+            <nav class="title-menu" aria-label="メインメニュー">
+              <button id="start-btn" class="ink-btn primary"><span>トンネルへ</span><i>走入隧道</i></button>
+              <button id="continue-btn" class="ink-btn hidden"><span>旅を続ける</span><i>继续旅程</i></button>
+              <button id="chapters-btn" class="ink-btn"><span>遊び方</span><i>操作说明</i></button>
+            </nav>
+            <div class="title-foot">
+              <span>マウス 視点<small>鼠标 视角</small></span>
+              <span class="title-foot-sep"></span>
+              <span>W / S 前進・後退<small>W / S 前进 / 后退</small></span>
+              <span class="title-foot-sep"></span>
+              <span>A / D 旋回<small>A / D 转向</small></span>
+              <span class="title-foot-sep"></span>
+              <span>音を出すことをおすすめします<small>建议开启声音</small></span>
+            </div>
+          </div>
+          <div class="title-vertical">千と千尋の神隠し</div>
+        </section>
+
+        <section id="journal" class="journal hidden" aria-label="旅の手記">
+          <div class="journal-panel">
+            <button id="journal-close" class="close-btn" aria-label="手記を閉じる">×</button>
+            <div class="journal-heading">
+              <span class="journal-kicker">TRAVEL JOURNAL</span>
+              <h2>旅の手記</h2>
+              <div class="heading-zh">旅程手记</div>
+              <p>名前は呪文。覚えていれば、帰り道が見つかる。</p>
+              <p class="heading-sub-zh">名字是咒语。记住它，就能找到回去的路。</p>
+            </div>
+            <div class="journal-body">
+              <div id="journal-chapters" class="journal-chapters"></div>
+              <aside class="journal-aside">
+                <div class="journal-objective-label">現在<small>当前</small></div>
+                <p id="journal-objective">旅を始める。</p>
+                <small id="journal-objective-zh" class="journal-objective-zh">开始旅程。</small>
+                <div class="journal-rule"></div>
+                <div class="journal-memories-label">拾った記憶<small>拾起的记忆</small></div>
+                <ul id="journal-memories" class="journal-memories"></ul>
+              </aside>
+            </div>
+            <div class="journal-actions">
+              <button id="journal-restart" class="text-btn">この章をやり直す<small>重新本章</small></button>
+              <button id="journal-title" class="text-btn">タイトルへ<small>回到标题</small></button>
+            </div>
+          </div>
+        </section>
+
+        <section id="chapter-select" class="journal hidden" aria-label="遊び方">
+          <div class="journal-panel chapter-select-panel">
+            <button id="chapter-select-close" class="close-btn" aria-label="閉じる">×</button>
+            <div class="journal-heading">
+              <span class="journal-kicker">HOW TO WALK INTO THE SPIRIT WORLD</span>
+              <h2>遊び方</h2>
+              <div class="heading-zh">操作说明</div>
+              <p>両親について、古い門をくぐる。道はひとつだけ。</p>
+              <p class="heading-sub-zh">跟着父母，穿过旧门楼。路只有一条。</p>
+            </div>
+            <div id="chapter-list" class="chapter-list help-list"></div>
+            <div class="help-note">
+              <p>・画面をクリックしてマウスを固定。マウスで視点、Escで解除。A / Dで旋回、W / Sで前進・後退。</p>
+              <p>・光る目的地に近づくと物語が進みます。石炭などの物には、近づいてEを押してください。</p>
+              <p>・湯屋の長い橋では、Eを押したまま息を止め、橋の幽霊に見つからないように。</p>
+              <p>・トンネルの先には石像の草原、その先に市場があります。</p>
+              <div class="help-note-zh">
+                <p>・点击画面锁定鼠标，移动鼠标调整视角，Esc 释放；A / D 转向，W / S 前进 / 后退。</p>
+                <p>・靠近发光的路径终点后，剧情会自动继续；煤块等可互动物体靠近后按 E。</p>
+                <p>・穿过汤屋长桥时，按住 E 屏住呼吸，别让桥上的幽灵听见。</p>
+                <p>・穿过隧道后，会先经过一片长着石像的草地，再到集市。</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="ending" class="ending hidden" aria-label="章の終わり">
+          <div class="ending-bg"></div>
+          <div class="ending-inner">
+            <div id="ending-kicker" class="ending-kicker">CHAPTER ONE · THE TUNNEL</div>
+            <h2 id="ending-title">灯</h2>
+            <div id="ending-title-zh" class="ending-title-zh">灯火</div>
+            <p id="ending-quote" class="ending-quote">「振り返ったとき、両親はいなかった。」</p>
+            <p id="ending-quote-zh" class="ending-quote-zh">“她回过头时，父母已经不见了。”</p>
+            <div id="ending-copy" class="ending-copy">
+              <p>旧市街の灯が一つ、また一つとともる。ベンチには、服を着た二頭の豚が、夕闇の中で夢中で食べているだけだった。</p>
+              <p>千尋の神隠しは、まだ始まったばかり。</p>
+            </div>
+            <div id="ending-copy-zh" class="ending-copy-zh">
+              <p>旧市街的灯一盏一盏亮起。长椅上，只剩两头穿着衣服的猪，在暮色里埋头进食。</p>
+              <p>属于千寻的神隐，才刚刚开始。</p>
+            </div>
+            <div id="ending-credits" class="ending-credits">
+              <p>第一章 · 完　｜　次章「契約」</p>
+              <p>同人インタラクティブ作品 · 3Dシーン／プログラム制作 · 非営利</p>
+            </div>
+            <div id="ending-credits-zh" class="ending-credits-zh">
+              <p>第一章 · 完　｜　下一章「契约」</p>
+              <p>同人互动作品 · 3D 场景与程序绘制 · 非商业用途</p>
+            </div>
+            <div class="ending-actions">
+              <button id="next-chapter-btn" class="ink-btn primary"><span>第二章へ</span><i>进入第二章</i></button>
+              <button id="replay-btn" class="ink-btn primary"><span>もう一度</span><i>再走一遍</i></button>
+              <button id="ending-title-btn" class="ink-btn"><span>タイトルへ</span><i>回到标题</i></button>
+            </div>
+          </div>
+        </section>
+
+        <div id="rotate-hint" class="rotate-hint" aria-hidden="true">
+          <span class="rotate-icon">↻</span>
+          <strong>端末を横向きに</strong>
+          <small>请横屏进入神隐</small>
+          <span>スマートフォンを横向きにして、古い門の先へ。</span>
+          <small>横过手机，沿着旧门楼前的路继续走。</small>
+        </div>
+
+        <div id="loading-screen" class="loading-screen">
+          <div class="loading-seal">千</div>
+          <div class="loading-title">神隠し</div>
+          <div class="loading-title-zh">神隐</div>
+          <div class="loading-sub">古い門の前の道をのばしています……</div>
+          <div class="loading-sub-zh">正在铺开旧门楼前的路……</div>
+          <div class="loading-bar"><i id="loading-progress"></i></div>
+          <div id="loading-percent" class="loading-percent">0%</div>
+        </div>
+
+        <section id="name-card" class="name-card hidden" aria-label="契約">
+          <div class="name-card-inner">
+            <span class="name-card-kicker">湯屋 · 契約<small>汤屋 · 契约</small></span>
+            <span id="name-old" class="name-old">荻野千尋</span>
+            <span class="name-arrow">→</span>
+            <span id="name-new" class="name-new">千</span>
+          </div>
+        </section>
+
+        <div id="scene-flash" class="scene-flash" aria-hidden="true"></div>
+        <div id="fade" class="fade" aria-hidden="true"></div>
+      </section>
+    </main>
+    <script type="module" src="/src/main3d.ts"></script>
+  </body>
+</html>
