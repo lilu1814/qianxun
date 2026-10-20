@@ -64,7 +64,8 @@ export class ChapterOne3D {
   private bathStage: 'bridge' | 'boiler' | 'office' = 'bridge';
   private carryingCoal: THREE.Mesh | null = null;
   private hakuMixer: THREE.AnimationMixer | null = null;
-  private hakuAction: THREE.AnimationAction | null = null;
+  private hakuWalkAction: THREE.AnimationAction | null = null;
+  private hakuTurnAction: THREE.AnimationAction | null = null;
   private hakuModel: THREE.Object3D | null = null;
   private townTime = 0;
   private townNight = false;
@@ -409,12 +410,16 @@ export class ChapterOne3D {
           this.hakuModel = model;
           if (gltf.animations.length) {
             this.hakuMixer = new THREE.AnimationMixer(model);
-            const clip = gltf.animations.find((animation) => /walk|turn/i.test(animation.name)) ?? gltf.animations[0];
-            this.hakuAction = this.hakuMixer.clipAction(clip);
-            this.hakuAction.setLoop(THREE.LoopOnce, 1);
-            this.hakuAction.clampWhenFinished = true;
-            this.hakuAction.play();
-            this.hakuAction.paused = true;
+            const walkClip = gltf.animations.find((animation) => /walk/i.test(animation.name)) ?? gltf.animations[0];
+            const turnClip = gltf.animations.find((animation) => /turn/i.test(animation.name)) ?? gltf.animations[0];
+            this.hakuWalkAction = this.hakuMixer.clipAction(walkClip);
+            this.hakuWalkAction.setLoop(THREE.LoopOnce, 1);
+            this.hakuWalkAction.clampWhenFinished = true;
+            this.hakuTurnAction = this.hakuMixer.clipAction(turnClip);
+            this.hakuTurnAction.setLoop(THREE.LoopOnce, 1);
+            this.hakuTurnAction.clampWhenFinished = true;
+            this.hakuTurnAction.play();
+            this.hakuTurnAction.paused = true;
             this.hakuMixer.update(0);
           }
           resolve();
@@ -433,32 +438,35 @@ export class ChapterOne3D {
   }
 
   private startHakuWalk(): void {
-    if (!this.hakuAction) return;
-    this.hakuAction.reset();
-    this.hakuAction.paused = false;
-    this.hakuAction.timeScale = 1;
-    this.hakuAction.setLoop(THREE.LoopOnce, 1);
-    this.hakuAction.clampWhenFinished = true;
-    this.hakuAction.play();
+    if (!this.hakuWalkAction) return;
+    this.hakuTurnAction?.stop();
+    this.hakuWalkAction.reset();
+    this.hakuWalkAction.paused = false;
+    this.hakuWalkAction.timeScale = 1;
+    this.hakuWalkAction.setLoop(THREE.LoopOnce, 1);
+    this.hakuWalkAction.clampWhenFinished = true;
+    this.hakuWalkAction.play();
   }
 
   private stopHakuWalk(): void {
-    if (!this.hakuAction) return;
-    this.hakuAction.time = this.hakuAction.getClip().duration;
-    this.hakuAction.timeScale = -2;
-    this.hakuAction.paused = false;
-    this.hakuAction.setLoop(THREE.LoopOnce, 1);
-    this.hakuAction.clampWhenFinished = true;
-    this.hakuAction.play();
+    if (!this.hakuTurnAction) return;
+    this.hakuWalkAction?.stop();
+    this.hakuTurnAction.reset();
+    this.hakuTurnAction.paused = false;
+    this.hakuTurnAction.timeScale = 2;
+    this.hakuTurnAction.setLoop(THREE.LoopOnce, 1);
+    this.hakuTurnAction.clampWhenFinished = true;
+    this.hakuTurnAction.play();
   }
 
   private resetHaku(): void {
     this.bathhouse.haku.position.set(0, 0.02, 6.4);
-    this.bathhouse.haku.rotation.y = Math.PI;
-    if (this.hakuAction) {
-      this.hakuAction.reset();
-      this.hakuAction.paused = true;
-      this.hakuAction.timeScale = 1;
+    this.bathhouse.haku.rotation.y = 0;
+    this.hakuWalkAction?.stop();
+    if (this.hakuTurnAction) {
+      this.hakuTurnAction.reset();
+      this.hakuTurnAction.paused = true;
+      this.hakuTurnAction.timeScale = 1;
       this.hakuMixer?.update(0);
     }
   }

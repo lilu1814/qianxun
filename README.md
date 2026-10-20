@@ -50,7 +50,7 @@ pnpm preview
 - `src/textConfig.ts`：実行時テキスト設定エンジン
 - `src/audio.ts`：BGM / 環境音
 - `public/models/chihiro_compact.glb`：千尋の実行時モデル
-- `public/models/haku.glb`：白龍の実行時モデル（`HakuWalk` 5 秒アニメーション付き）
+- `public/models/haku.glb`：白龍の実行時モデル（`HakuWalk` / `HakuTurn` の 5 秒アニメーション付き）
 - `blender/export_haku.py`：白龍 FBX → GLB 変換スクリプト
 - `public/config/text.json`：日中各テキスト設定
 
@@ -58,4 +58,4 @@ pnpm preview
 
 - 対話音声は現在無効です（BGM のみ）。
 - `blender/source/` の大容量元モデルと元 FBX はリポジトリに含めていません。実行用モデルは `public/models/` にあります。
-- 白龍の FBX は 121 フレームの原地ターン／歩行アニメーションを 1 クリップ（`HakuWalk`）として GLB に変換し、長橋の移動と同期させています。
+- 白龍の FBX は 121 フレームのターン／ステップ動作を元に、Blender で身体の向きを打ち消した `HakuWalk` と、元の 180 度ターン `HakuTurn` の 2 クリップへ変換しています。長橋では `HakuWalk` を移動と同期し、橋の終わりで `HakuTurn` により千尋へ向き直ります。

@@ -2543,7 +2543,7 @@ export function buildBathhouseWorld(): BathhouseWorld {
 
   const haku = createHaku();
   haku.position.set(0, 0.02, 6.4);
-  haku.rotation.y = Math.PI;
+  haku.rotation.y = 0;
   const hakuFill = new THREE.PointLight(0xffe0bd, 2.4, 5.5, 2);
   hakuFill.position.set(0, 2.2, 0.2);
   haku.add(hakuFill);
@@ -2793,7 +2793,7 @@ export function buildBathhouseWorld(): BathhouseWorld {
         haku.position.z += (6.4 - haku.position.z) * (1 - Math.exp(-dt * 1.2));
       }
       haku.position.y = 0.02;
-      haku.rotation.y = Math.PI + (walking ? 0 : Math.sin(time * 0.8) * 0.025);
+      haku.rotation.y = walking ? 0 : Math.sin(time * 0.8) * 0.025;
     }
   };
 
