@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { Soundtrack } from '../audio';
 import { StoryUI, wait } from './ui';
 import {
@@ -61,12 +62,47 @@ export class ChapterOne3D {
   private bathhouse: BathhouseWorld;
   private world: WorldName = 'field';
   private chapterNumber: 1 | 2 = 1;
+  private outfit: 'casual' | 'work' = 'casual';
   private bathStage: 'bridge' | 'boiler' | 'office' = 'bridge';
   private carryingCoal: THREE.Mesh | null = null;
   private hakuMixer: THREE.AnimationMixer | null = null;
   private hakuWalkAction: THREE.AnimationAction | null = null;
   private hakuTurnAction: THREE.AnimationAction | null = null;
   private hakuModel: THREE.Object3D | null = null;
+  private yubabaMixer: THREE.AnimationMixer | null = null;
+  private yubabaWalkAction: THREE.AnimationAction | null = null;
+  private yubabaModel: THREE.Object3D | null = null;
+  private linMixer: THREE.AnimationMixer | null = null;
+  private linWalkAction: THREE.AnimationAction | null = null;
+  private linModel: THREE.Object3D | null = null;
+  private kamajiMixer: THREE.AnimationMixer | null = null;
+  private kamajiAction: THREE.AnimationAction | null = null;
+  private kamajiModel: THREE.Object3D | null = null;
+  private fieldDadMixer: THREE.AnimationMixer | null = null;
+  private fieldDadIdle: THREE.AnimationAction | null = null;
+  private fieldDadWalk: THREE.AnimationAction | null = null;
+  private fieldDadWeight = 0;
+  private townDadMixer: THREE.AnimationMixer | null = null;
+  private townDadIdle: THREE.AnimationAction | null = null;
+  private townDadWalk: THREE.AnimationAction | null = null;
+  private townDadSit: THREE.AnimationAction | null = null;
+  private townDadIdleWeight = 0;
+  private townDadWalkWeight = 0;
+  private townDadSitWeight = 1;
+  private fieldMomMixer: THREE.AnimationMixer | null = null;
+  private fieldMomIdle: THREE.AnimationAction | null = null;
+  private fieldMomWalk: THREE.AnimationAction | null = null;
+  private fieldMomWeight = 0;
+  private townMomMixer: THREE.AnimationMixer | null = null;
+  private townMomIdle: THREE.AnimationAction | null = null;
+  private townMomWalk: THREE.AnimationAction | null = null;
+  private townMomSit: THREE.AnimationAction | null = null;
+  private townMomIdleWeight = 0;
+  private townMomWalkWeight = 0;
+  private townMomSitWeight = 1;
+  private townParentState: 'idle' | 'walk' | 'sit' = 'sit';
+  private yubabaPacing = false;
+  private yubabaPaceDir = 1;
   private townTime = 0;
   private townNight = false;
   private townMood: 'day' | 'dusk' | 'night' = 'day';
@@ -86,14 +122,16 @@ export class ChapterOne3D {
 
   private camYaw = Math.PI;
   private camPitch = 0.27;
-  private camDistance = 4.4;
-  private camTargetDistance = 4.4;
-  private camLookHeight = 1.02;
+  private camDistance = 4.6;
+  private camTargetDistance = 4.6;
+  private camLookHeight = 1.05;
   private followLook = new THREE.Vector3();
   private followLookTarget = new THREE.Vector3();
   private followPos = new THREE.Vector3();
   private camMode: 'follow' | 'cinematic' | 'title' = 'title';
   private cine: CinematicShot | null = null;
+  private cameraColliders: THREE.Mesh[] = [];
+  private cameraRaycaster = new THREE.Raycaster();
   private titleTime = 0;
 
   private keys = new Set<string>();
@@ -108,6 +146,9 @@ export class ChapterOne3D {
   private pointerLockFailed = false;
   private freeLook = false;
   private freeLookLast = { x: 0, y: 0 };
+  private dialogueLookDrag = false;
+  private dialogueLookYaw = 0;
+  private dialogueLookPitch = 0;
 
   private moveTarget: THREE.Vector3 | null = null;
   private clickRing: THREE.Mesh;
@@ -292,8 +333,18 @@ export class ChapterOne3D {
     await wait(30);
     onProgress(0.1, '千尋を呼ぶ');
     await this.loadChihiro(onProgress);
-    onProgress(0.72, '白龍を呼ぶ');
+    onProgress(0.7, 'お父さんを呼ぶ');
+    await this.loadDad();
+    onProgress(0.74, 'お母さんを呼ぶ');
+    await this.loadMom();
+    onProgress(0.77, '白龍を呼ぶ');
     await this.loadHaku(onProgress);
+    onProgress(0.86, '湯婆婆を呼ぶ');
+    await this.loadYubaba(onProgress);
+    onProgress(0.92, 'リンを呼ぶ');
+    await this.loadLin(onProgress);
+    onProgress(0.95, '釜爺を呼ぶ');
+    await this.loadKamaji(onProgress);
     onProgress(0.99, '風が来た');
     await wait(120);
     this.setWorld('field');
@@ -309,8 +360,10 @@ export class ChapterOne3D {
       const dracoLoader = new DRACOLoader();
       dracoLoader.setDecoderPath('/draco/');
       loader.setDRACOLoader(dracoLoader);
+      const modelUrl = this.outfit === 'work' ? '/models/chihiro_work.glb' : '/models/chihiro_compact.glb';
+      const fallbackTotal = this.outfit === 'work' ? 811668 : 3225212;
       loader.load(
-        '/models/chihiro_compact.glb',
+        modelUrl,
         (gltf) => {
           const model = gltf.scene;
           model.traverse((object) => {
@@ -340,8 +393,15 @@ export class ChapterOne3D {
           const clips = gltf.animations;
           if (clips.length) {
             this.mixer = new THREE.AnimationMixer(model);
-            const idleClip = clips.find((clip) => /idle/i.test(clip.name)) ?? clips[0];
-            const walkClip = clips.find((clip) => /walk/i.test(clip.name)) ?? clips[1] ?? clips[0];
+            const walkClip = clips.find((clip) => /walk/i.test(clip.name)) ?? clips[0];
+            let idleClip = clips.find((clip) => /idle/i.test(clip.name));
+            if (!idleClip) {
+              // The work-outfit GLB ships a walk cycle only. Freeze a tiny
+              // first-frame loop so the same idle/walk crossfade still works.
+              idleClip = walkClip.clone();
+              idleClip.name = 'Idle';
+              idleClip.duration = 1 / 24;
+            }
             this.idleAction = this.mixer.clipAction(idleClip);
             this.walkAction = this.mixer.clipAction(walkClip);
             this.idleAction.setLoop(THREE.LoopRepeat, Infinity);
@@ -357,7 +417,7 @@ export class ChapterOne3D {
           resolve();
         },
         (event) => {
-          const total = event.total || 3225212;
+          const total = event.total || fallbackTotal;
           const p = 0.1 + Math.min(0.86, (event.loaded / total) * 0.86);
           onProgress(p, '千尋の手を取る');
         },
@@ -368,6 +428,10 @@ export class ChapterOne3D {
 
   setChapter(chapter: 1 | 2): void {
     this.chapterNumber = chapter;
+  }
+
+  setOutfit(outfit: 'casual' | 'work'): void {
+    this.outfit = outfit;
   }
 
   get currentChapter(): 1 | 2 {
@@ -437,6 +501,22 @@ export class ChapterOne3D {
     });
   }
 
+  private cancelHakuWalkTurn(): void {
+    if (!this.hakuModel) return;
+    const walking = this.bathhouse.haku.userData.walking === true;
+    if (!walking || !this.hakuWalkAction?.isRunning()) {
+      this.hakuModel.rotation.y = 0;
+      return;
+    }
+    const rootBone = this.hakuModel.getObjectByName('root');
+    if (!rootBone) return;
+    const euler = new THREE.Euler().setFromQuaternion(rootBone.quaternion, 'YXZ');
+    // HakuWalk contains a root-level turn. Cancel that yaw so the body keeps
+    // the forward direction established by the bridge turn, while the limbs
+    // still play the walking animation.
+    this.hakuModel.rotation.y = -euler.y;
+  }
+
   private startHakuWalk(): void {
     if (!this.hakuWalkAction) return;
     this.hakuTurnAction?.stop();
@@ -459,9 +539,51 @@ export class ChapterOne3D {
     this.hakuTurnAction.play();
   }
 
+  private startYubabaPacing(): void {
+    this.yubabaPacing = true;
+    this.yubabaPaceDir = 1;
+    this.bathhouse.yubaba.position.x = 0;
+    if (this.yubabaWalkAction) {
+      this.yubabaWalkAction.reset();
+      this.yubabaWalkAction.paused = false;
+      this.yubabaWalkAction.setLoop(THREE.LoopRepeat, Infinity);
+      this.yubabaWalkAction.timeScale = 1;
+      this.yubabaWalkAction.play();
+    }
+  }
+
+  private resetYubaba(): void {
+    this.yubabaPacing = false;
+    this.yubabaPaceDir = 1;
+    this.bathhouse.yubaba.position.set(0, 0, -1.9);
+    this.bathhouse.yubaba.rotation.y = 0;
+    if (this.yubabaWalkAction) {
+      this.yubabaWalkAction.reset();
+      this.yubabaWalkAction.paused = true;
+      this.yubabaMixer?.update(0);
+    }
+  }
+
+  private updateYubabaPacing(dt: number): void {
+    if (!this.yubabaPacing || this.bathStage !== 'office') return;
+    const yubaba = this.bathhouse.yubaba;
+    const limit = 1.15;
+    yubaba.position.x += this.yubabaPaceDir * dt * 0.55;
+    if (yubaba.position.x >= limit) {
+      yubaba.position.x = limit;
+      this.yubabaPaceDir = -1;
+    } else if (yubaba.position.x <= -limit) {
+      yubaba.position.x = -limit;
+      this.yubabaPaceDir = 1;
+    }
+    const targetYaw = this.yubabaPaceDir > 0 ? Math.PI / 2 : -Math.PI / 2;
+    yubaba.rotation.y = smoothAngle(yubaba.rotation.y, targetYaw, 1 - Math.exp(-dt * 8));
+  }
+
   private resetHaku(): void {
-    this.bathhouse.haku.position.set(0, 0.02, 6.4);
+    this.bathhouse.haku.position.set(0, this.bathhouse.bridgeHeightAt(6.4) + 0.02, 6.4);
     this.bathhouse.haku.rotation.y = 0;
+    this.bathhouse.haku.userData.facingPlayer = false;
     this.hakuWalkAction?.stop();
     if (this.hakuTurnAction) {
       this.hakuTurnAction.reset();
@@ -471,11 +593,444 @@ export class ChapterOne3D {
     }
   }
 
+  private loadDad(): Promise<void> {
+    return new Promise((resolve) => {
+      const loader = new GLTFLoader();
+      loader.load('/models/dad.glb?v=6', (gltf) => {
+        const source = gltf.scene;
+        const makeDad = (): THREE.Object3D => {
+          const model = cloneSkeleton(source);
+          model.traverse((object) => {
+            if (object instanceof THREE.Mesh) {
+              object.castShadow = true;
+              object.receiveShadow = false;
+              object.frustumCulled = false;
+              const materials = Array.isArray(object.material) ? object.material : [object.material];
+              materials.forEach((material) => {
+                if (material instanceof THREE.MeshStandardMaterial) {
+                  material.roughness = Math.max(0.65, material.roughness);
+                  material.metalness = Math.min(0.1, material.metalness);
+                  material.needsUpdate = true;
+                }
+              });
+            }
+          });
+          model.updateMatrixWorld(true);
+          const box = new THREE.Box3().setFromObject(model);
+          const size = box.getSize(new THREE.Vector3());
+          const fit = 1.82 / Math.max(0.001, size.y);
+          model.scale.multiplyScalar(fit);
+          model.updateMatrixWorld(true);
+          const scaled = new THREE.Box3().setFromObject(model);
+          const center = scaled.getCenter(new THREE.Vector3());
+          model.position.x -= center.x;
+          model.position.z -= center.z;
+          model.position.y -= scaled.min.y;
+          return model;
+        };
+
+        const fieldDadGroup = this.field.parents[0];
+        fieldDadGroup.children.forEach((child) => { child.visible = false; });
+        const fieldDad = makeDad();
+        fieldDadGroup.add(fieldDad);
+        this.fieldDadMixer = new THREE.AnimationMixer(fieldDad);
+        const fieldClips = gltf.animations;
+        const fieldIdleClip = fieldClips.find((clip) => /idle/i.test(clip.name));
+        const fieldWalkClip = fieldClips.find((clip) => /walk/i.test(clip.name));
+        if (fieldIdleClip && fieldWalkClip) {
+          this.fieldDadIdle = this.fieldDadMixer.clipAction(fieldIdleClip);
+          this.fieldDadWalk = this.fieldDadMixer.clipAction(fieldWalkClip);
+          this.fieldDadIdle.setLoop(THREE.LoopRepeat, Infinity);
+          this.fieldDadWalk.setLoop(THREE.LoopRepeat, Infinity);
+          this.fieldDadIdle.play();
+          this.fieldDadWalk.play();
+          this.fieldDadIdle.setEffectiveWeight(1);
+          this.fieldDadWalk.setEffectiveWeight(0);
+          this.fieldDadMixer.update(0);
+        }
+
+        const townDadGroup = this.town.humanParents[0];
+        townDadGroup.children.forEach((child) => { child.visible = false; });
+        townDadGroup.position.y = 0;
+        const townDad = makeDad();
+        townDadGroup.add(townDad);
+        // low wooden stool under the seated father
+        const stoolMat = new THREE.MeshStandardMaterial({ color: 0x4b3324, roughness: 0.92 });
+        const stoolParts: THREE.Object3D[] = [];
+        const seat = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.06, 0.58), stoolMat);
+        seat.position.set(0, 0.41, -0.06);
+        townDadGroup.add(seat);
+        stoolParts.push(seat);
+        for (const x of [-0.3, 0.3]) {
+          for (const z of [-0.2, 0.2]) {
+            const leg = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.38, 0.075), stoolMat);
+            leg.position.set(x, 0.19, z - 0.08);
+            townDadGroup.add(leg);
+            stoolParts.push(leg);
+          }
+        }
+        stoolParts.forEach((part) => { part.visible = false; });
+        townDadGroup.userData.stoolParts = stoolParts;
+        this.townDadMixer = new THREE.AnimationMixer(townDad);
+        const townIdleClip = gltf.animations.find((clip) => /idle/i.test(clip.name));
+        const townWalkClip = gltf.animations.find((clip) => /walk/i.test(clip.name));
+        const sitClip = gltf.animations.find((clip) => /sit/i.test(clip.name));
+        if (townIdleClip) {
+          this.townDadIdle = this.townDadMixer.clipAction(townIdleClip);
+          this.townDadIdle.setLoop(THREE.LoopRepeat, Infinity);
+          this.townDadIdle.play();
+          this.townDadIdle.setEffectiveWeight(0);
+        }
+        if (townWalkClip) {
+          this.townDadWalk = this.townDadMixer.clipAction(townWalkClip);
+          this.townDadWalk.setLoop(THREE.LoopRepeat, Infinity);
+          this.townDadWalk.play();
+          this.townDadWalk.setEffectiveWeight(0);
+        }
+        if (sitClip) {
+          this.townDadSit = this.townDadMixer.clipAction(sitClip);
+          this.townDadSit.setLoop(THREE.LoopRepeat, Infinity);
+          this.townDadSit.play();
+          this.townDadSit.setEffectiveWeight(1);
+          this.townDadMixer.update(0);
+        }
+        resolve();
+      }, undefined, (error) => {
+        console.warn('Dad GLB failed to load; keeping procedural fallback.', error);
+        resolve();
+      });
+    });
+  }
+
+  private loadMom(): Promise<void> {
+    return new Promise((resolve) => {
+      const loader = new GLTFLoader();
+      loader.load('/models/mom.glb?v=5', (gltf) => {
+        const source = gltf.scene;
+        const makeMom = (): THREE.Object3D => {
+          const model = cloneSkeleton(source);
+          model.traverse((object) => {
+            if (object instanceof THREE.Mesh) {
+              object.castShadow = true;
+              object.receiveShadow = false;
+              object.frustumCulled = false;
+              const materials = Array.isArray(object.material) ? object.material : [object.material];
+              materials.forEach((material) => {
+                if (material instanceof THREE.MeshStandardMaterial) {
+                  material.roughness = Math.max(0.65, material.roughness);
+                  material.metalness = Math.min(0.1, material.metalness);
+                  material.needsUpdate = true;
+                }
+              });
+            }
+          });
+          model.updateMatrixWorld(true);
+          const box = new THREE.Box3().setFromObject(model);
+          const size = box.getSize(new THREE.Vector3());
+          model.scale.multiplyScalar(1.62 / Math.max(0.001, size.y));
+          model.updateMatrixWorld(true);
+          const scaled = new THREE.Box3().setFromObject(model);
+          const center = scaled.getCenter(new THREE.Vector3());
+          model.position.x -= center.x;
+          model.position.z -= center.z;
+          model.position.y -= scaled.min.y;
+          return model;
+        };
+
+        const fieldMomGroup = this.field.parents[1];
+        fieldMomGroup.children.forEach((child) => { child.visible = false; });
+        const fieldMom = makeMom();
+        fieldMomGroup.add(fieldMom);
+        this.fieldMomMixer = new THREE.AnimationMixer(fieldMom);
+        const idleClip = gltf.animations.find((clip) => /idle/i.test(clip.name));
+        const walkClip = gltf.animations.find((clip) => /walk/i.test(clip.name));
+        if (idleClip && walkClip) {
+          this.fieldMomIdle = this.fieldMomMixer.clipAction(idleClip);
+          this.fieldMomWalk = this.fieldMomMixer.clipAction(walkClip);
+          this.fieldMomIdle.setLoop(THREE.LoopRepeat, Infinity);
+          this.fieldMomWalk.setLoop(THREE.LoopRepeat, Infinity);
+          this.fieldMomIdle.play();
+          this.fieldMomWalk.play();
+          this.fieldMomIdle.setEffectiveWeight(1);
+          this.fieldMomWalk.setEffectiveWeight(0);
+          this.fieldMomMixer.update(0);
+        }
+
+        const townMomGroup = this.town.humanParents[1];
+        townMomGroup.children.forEach((child) => { child.visible = false; });
+        townMomGroup.position.y = 0;
+        const townMom = makeMom();
+        townMomGroup.add(townMom);
+        const stoolMat = new THREE.MeshStandardMaterial({ color: 0x4b3324, roughness: 0.92 });
+        const stoolParts: THREE.Object3D[] = [];
+        const seat = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.06, 0.54), stoolMat);
+        seat.position.set(0, 0.41, -0.06);
+        townMomGroup.add(seat);
+        stoolParts.push(seat);
+        for (const x of [-0.28, 0.28]) {
+          for (const z of [-0.18, 0.18]) {
+            const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.38, 0.07), stoolMat);
+            leg.position.set(x, 0.19, z - 0.08);
+            townMomGroup.add(leg);
+            stoolParts.push(leg);
+          }
+        }
+        stoolParts.forEach((part) => { part.visible = false; });
+        townMomGroup.userData.stoolParts = stoolParts;
+        this.townMomMixer = new THREE.AnimationMixer(townMom);
+        const townIdleClip = gltf.animations.find((clip) => /idle/i.test(clip.name));
+        const townWalkClip = gltf.animations.find((clip) => /walk/i.test(clip.name));
+        const sitClip = gltf.animations.find((clip) => /sit/i.test(clip.name));
+        if (townIdleClip) {
+          this.townMomIdle = this.townMomMixer.clipAction(townIdleClip);
+          this.townMomIdle.setLoop(THREE.LoopRepeat, Infinity);
+          this.townMomIdle.play();
+          this.townMomIdle.setEffectiveWeight(0);
+        }
+        if (townWalkClip) {
+          this.townMomWalk = this.townMomMixer.clipAction(townWalkClip);
+          this.townMomWalk.setLoop(THREE.LoopRepeat, Infinity);
+          this.townMomWalk.play();
+          this.townMomWalk.setEffectiveWeight(0);
+        }
+        if (sitClip) {
+          this.townMomSit = this.townMomMixer.clipAction(sitClip);
+          this.townMomSit.setLoop(THREE.LoopRepeat, Infinity);
+          this.townMomSit.play();
+          this.townMomSit.setEffectiveWeight(1);
+          this.townMomMixer.update(0);
+        }
+        resolve();
+      }, undefined, (error) => {
+        console.warn('Mom GLB failed to load; keeping procedural fallback.', error);
+        resolve();
+      });
+    });
+  }
+
+  private updateDadAnimations(dt: number): void {
+    if (this.fieldDadMixer && this.fieldDadIdle && this.fieldDadWalk) {
+      const target = this.parentsAuto ? 1 : 0;
+      this.fieldDadWeight = THREE.MathUtils.damp(this.fieldDadWeight, target, 7, dt);
+      this.fieldDadWalk.setEffectiveWeight(this.fieldDadWeight);
+      this.fieldDadIdle.setEffectiveWeight(1 - this.fieldDadWeight);
+      this.fieldDadMixer.update(dt);
+    }
+    if (this.townDadMixer) {
+      const walking = this.townParentState === 'walk';
+      const sitting = this.townParentState === 'sit';
+      const idling = this.townParentState === 'idle';
+      this.townDadWalkWeight = THREE.MathUtils.damp(this.townDadWalkWeight, walking ? 1 : 0, 7, dt);
+      this.townDadSitWeight = THREE.MathUtils.damp(this.townDadSitWeight, sitting ? 1 : 0, 7, dt);
+      this.townDadIdleWeight = THREE.MathUtils.damp(this.townDadIdleWeight, idling ? 1 : 0, 7, dt);
+      this.townDadWalk?.setEffectiveWeight(this.townDadWalkWeight);
+      this.townDadSit?.setEffectiveWeight(this.townDadSitWeight);
+      this.townDadIdle?.setEffectiveWeight(this.townDadIdleWeight);
+      this.townDadMixer.update(dt);
+    }
+    if (this.fieldMomMixer && this.fieldMomIdle && this.fieldMomWalk) {
+      const target = this.parentsAuto ? 1 : 0;
+      this.fieldMomWeight = THREE.MathUtils.damp(this.fieldMomWeight, target, 7, dt);
+      this.fieldMomWalk.setEffectiveWeight(this.fieldMomWeight);
+      this.fieldMomIdle.setEffectiveWeight(1 - this.fieldMomWeight);
+      this.fieldMomMixer.update(dt);
+    }
+    if (this.townMomMixer) {
+      const walking = this.townParentState === 'walk';
+      const sitting = this.townParentState === 'sit';
+      const idling = this.townParentState === 'idle';
+      this.townMomWalkWeight = THREE.MathUtils.damp(this.townMomWalkWeight, walking ? 1 : 0, 7, dt);
+      this.townMomSitWeight = THREE.MathUtils.damp(this.townMomSitWeight, sitting ? 1 : 0, 7, dt);
+      this.townMomIdleWeight = THREE.MathUtils.damp(this.townMomIdleWeight, idling ? 1 : 0, 7, dt);
+      this.townMomWalk?.setEffectiveWeight(this.townMomWalkWeight);
+      this.townMomSit?.setEffectiveWeight(this.townMomSitWeight);
+      this.townMomIdle?.setEffectiveWeight(this.townMomIdleWeight);
+      this.townMomMixer.update(dt);
+    }
+  }
+
+  private loadKamaji(onProgress: (progress: number, label?: string) => void): Promise<void> {
+    return new Promise((resolve) => {
+      const loader = new GLTFLoader();
+      loader.load(
+        '/models/kamaji.glb',
+        (gltf) => {
+          const model = gltf.scene;
+          model.traverse((object) => {
+            if (object instanceof THREE.Mesh) {
+              object.castShadow = true;
+              object.receiveShadow = false;
+              const materials = Array.isArray(object.material) ? object.material : [object.material];
+              materials.forEach((material) => {
+                if (material instanceof THREE.MeshStandardMaterial) {
+                  material.roughness = Math.min(0.94, Math.max(0.5, material.roughness));
+                  material.metalness = Math.min(0.12, material.metalness);
+                  material.envMapIntensity = 0.3;
+                  material.needsUpdate = true;
+                }
+              });
+            }
+          });
+          const box = new THREE.Box3().setFromObject(model);
+          const size = box.getSize(new THREE.Vector3());
+          const scale = 2.25 / Math.max(0.001, size.y);
+          model.scale.setScalar(scale);
+          const scaledBox = new THREE.Box3().setFromObject(model);
+          model.position.y -= scaledBox.min.y;
+          this.bathhouse.kamaji.visible = true;
+          this.bathhouse.kamaji.children.forEach((child) => {
+            if (!(child instanceof THREE.Light)) child.visible = false;
+          });
+          this.bathhouse.kamaji.add(model);
+          this.kamajiModel = model;
+          this.bathhouse.kamajiCutout.visible = false;
+          if (gltf.animations.length) {
+            this.kamajiMixer = new THREE.AnimationMixer(model);
+            const clip = gltf.animations.find((animation) => /flail|arm|work/i.test(animation.name)) ?? gltf.animations[0];
+            this.kamajiAction = this.kamajiMixer.clipAction(clip);
+            this.kamajiAction.setLoop(THREE.LoopRepeat, Infinity);
+            this.kamajiAction.play();
+            this.kamajiMixer.update(0);
+          }
+          resolve();
+        },
+        (event) => {
+          const total = event.total || 589280;
+          const p = 0.95 + Math.min(0.035, (event.loaded / total) * 0.035);
+          onProgress(p, '釜爺を呼ぶ');
+        },
+        (error) => {
+          console.warn('Kamaji GLB failed to load; keeping the cutout fallback.', error);
+          resolve();
+        },
+      );
+    });
+  }
+
+  private loadLin(onProgress: (progress: number, label?: string) => void): Promise<void> {
+    return new Promise((resolve) => {
+      const loader = new GLTFLoader();
+      loader.load(
+        '/models/lin.glb',
+        (gltf) => {
+          const model = gltf.scene;
+          model.traverse((object) => {
+            if (object instanceof THREE.Mesh) {
+              object.castShadow = true;
+              object.receiveShadow = false;
+              const materials = Array.isArray(object.material) ? object.material : [object.material];
+              materials.forEach((material) => {
+                if (material instanceof THREE.MeshStandardMaterial) {
+                  material.roughness = Math.min(0.94, Math.max(0.5, material.roughness));
+                  material.metalness = Math.min(0.1, material.metalness);
+                  material.envMapIntensity = 0.3;
+                  material.needsUpdate = true;
+                }
+              });
+            }
+          });
+          const box = new THREE.Box3().setFromObject(model);
+          const size = box.getSize(new THREE.Vector3());
+          const scale = 1.62 / Math.max(0.001, size.y);
+          model.scale.setScalar(scale);
+          const scaledBox = new THREE.Box3().setFromObject(model);
+          model.position.y -= scaledBox.min.y;
+          this.bathhouse.lin.children.forEach((child) => {
+            if (!(child instanceof THREE.Light)) child.visible = false;
+          });
+          this.bathhouse.lin.add(model);
+          this.linModel = model;
+          if (gltf.animations.length) {
+            this.linMixer = new THREE.AnimationMixer(model);
+            const walkClip = gltf.animations.find((animation) => /walk/i.test(animation.name)) ?? gltf.animations[0];
+            this.linWalkAction = this.linMixer.clipAction(walkClip);
+            this.linWalkAction.setLoop(THREE.LoopRepeat, Infinity);
+            this.linWalkAction.play();
+            // Boiler scene: hold a calm first-frame pose; the Walk clip remains
+            // available when Lin needs to move.
+            this.linWalkAction.paused = true;
+            this.linMixer.update(0);
+          }
+          resolve();
+        },
+        (event) => {
+          const total = event.total || 563200;
+          const p = 0.92 + Math.min(0.06, (event.loaded / total) * 0.06);
+          onProgress(p, 'リンを呼ぶ');
+        },
+        (error) => {
+          console.warn('Lin GLB failed to load; using procedural fallback.', error);
+          resolve();
+        },
+      );
+    });
+  }
+
+  private loadYubaba(onProgress: (progress: number, label?: string) => void): Promise<void> {
+    return new Promise((resolve) => {
+      const loader = new GLTFLoader();
+      loader.load(
+        '/models/yubaba.glb',
+        (gltf) => {
+          const model = gltf.scene;
+          model.traverse((object) => {
+            if (object instanceof THREE.Mesh) {
+              object.castShadow = true;
+              object.receiveShadow = false;
+              const materials = Array.isArray(object.material) ? object.material : [object.material];
+              materials.forEach((material) => {
+                if (material instanceof THREE.MeshStandardMaterial) {
+                  material.roughness = Math.min(0.94, Math.max(0.5, material.roughness));
+                  material.metalness = Math.min(0.1, material.metalness);
+                  material.envMapIntensity = 0.3;
+                  material.needsUpdate = true;
+                }
+              });
+            }
+          });
+          const box = new THREE.Box3().setFromObject(model);
+          const size = box.getSize(new THREE.Vector3());
+          const scale = 1.86 / Math.max(0.001, size.y);
+          model.scale.setScalar(scale);
+          const scaledBox = new THREE.Box3().setFromObject(model);
+          model.position.y -= scaledBox.min.y;
+          this.bathhouse.yubaba.position.set(0, 0, -1.9);
+          this.bathhouse.yubaba.rotation.y = 0;
+          this.bathhouse.yubaba.children.forEach((child) => {
+            if (!(child instanceof THREE.Light)) child.visible = false;
+          });
+          this.bathhouse.yubaba.add(model);
+          this.yubabaModel = model;
+          if (gltf.animations.length) {
+            this.yubabaMixer = new THREE.AnimationMixer(model);
+            const clip = gltf.animations.find((animation) => /walk/i.test(animation.name)) ?? gltf.animations[0];
+            this.yubabaWalkAction = this.yubabaMixer.clipAction(clip);
+            this.yubabaWalkAction.setLoop(THREE.LoopRepeat, Infinity);
+            this.yubabaWalkAction.play();
+            // Office scene: stay on the lowered-arms first frame until she walks.
+            this.yubabaWalkAction.paused = true;
+            this.yubabaMixer.update(0);
+          }
+          resolve();
+        },
+        (event) => {
+          const total = event.total || 1154560;
+          const p = 0.86 + Math.min(0.12, (event.loaded / total) * 0.12);
+          onProgress(p, '湯婆婆を呼ぶ');
+        },
+        (error) => {
+          console.warn('Yubaba GLB failed to load; using procedural fallback.', error);
+          resolve();
+        },
+      );
+    });
+  }
+
   prepareTitle(): void {
     this.phase = 'title';
     this.setWorld('field');
     this.player.position.copy(this.field.playerStart);
-    this.player.rotation.y = 0.16;
+    this.player.rotation.y = 0;
     this.playerVisible = true;
     this.player.visible = true;
     this.placeParentsAt(0.36);
@@ -488,11 +1043,16 @@ export class ChapterOne3D {
 
   async begin(): Promise<void> {
     if (this.phase !== 'title') return;
+    if (this.chapterNumber === 2) {
+      await this.beginChapterTwo();
+      return;
+    }
     this.chapterNumber = 1;
     this.phase = 'playing';
     this.ui.setActive(true);
     this.ui.showHud(true);
     this.audio.init();
+    this.audio.playTheme('/audio/that_summer.mp3', 0.6);
     this.audio.setMood('day');
     this.setWorld('field');
     this.player.position.copy(this.field.playerStart);
@@ -547,8 +1107,9 @@ export class ChapterOne3D {
     this.camMode = 'follow';
     this.camYaw = Math.PI;
     this.camPitch = 0.22;
-    this.camDistance = 3.8;
-    this.camTargetDistance = 3.8;
+    this.camDistance = 4.6;
+    this.camTargetDistance = 4.6;
+    this.camLookHeight = 1.05;
     this.ui.setObjective('トンネルを抜ける');
     this.snapCamera();
     await this.ui.fade(false, 900);
@@ -578,9 +1139,10 @@ export class ChapterOne3D {
     this.player.rotation.y = 0;
     this.camMode = 'follow';
     this.camYaw = Math.PI;
-    this.camPitch = 0.22;
-    this.camDistance = 4.15;
-    this.camTargetDistance = 4.15;
+    this.camPitch = 0.08;
+    this.camDistance = 4.6;
+    this.camTargetDistance = 4.6;
+    this.camLookHeight = 1.55;
     this.ui.setObjective('草原を抜けて、市場へ');
     this.snapCamera();
     await this.ui.fade(false, 1000);
@@ -601,11 +1163,109 @@ export class ChapterOne3D {
     this.movementEnabled = false;
     this.cutscene = true;
     await this.ui.narrate('草の丘を越えると、旧市街が午後の陽の中に広がった。');
+    this.audio.stopTheme(1000);
     await this.ui.fade(true, 1000);
     await this.enterTown();
   }
 
+  private setTownStoolsVisible(visible: boolean): void {
+    for (const group of this.town.humanParents) {
+      const parts = group.userData.stoolParts as THREE.Object3D[] | undefined;
+      parts?.forEach((part) => { part.visible = visible; });
+    }
+  }
+
+  private async walkTownParentsToStall(duration = 5000): Promise<void> {
+    const dad = this.town.humanParents[0];
+    const mom = this.town.humanParents[1];
+    const dadFrom = dad.position.clone();
+    const momFrom = mom.position.clone();
+    const dadTo = new THREE.Vector3(2.25, 0, 12.98);
+    const momTo = new THREE.Vector3(2.25, 0, 16.02);
+    dad.rotation.y = 0;
+    mom.rotation.y = 0;
+    await new Promise<void>((resolve) => {
+      const started = performance.now();
+      const tick = () => {
+        const t = Math.min(1, (performance.now() - started) / duration);
+        const ease = t * t * (3 - 2 * t);
+        dad.position.lerpVectors(dadFrom, dadTo, ease);
+        mom.position.lerpVectors(momFrom, momTo, ease);
+        if (t < 1) requestAnimationFrame(tick);
+        else {
+          dad.rotation.y = 0;
+          mom.rotation.y = Math.PI;
+          resolve();
+        }
+      };
+      tick();
+    });
+  }
+
+  private stageTownParentsAtEntrance(): void {
+    const dad = this.town.humanParents[0];
+    const mom = this.town.humanParents[1];
+    dad.position.set(-0.95, 0, 2.8);
+    mom.position.set(0.95, 0, 2.8);
+    dad.rotation.y = Math.PI;
+    mom.rotation.y = Math.PI;
+    this.townParentState = 'idle';
+    this.setTownStoolsVisible(false);
+    this.townDadIdleWeight = 1;
+    this.townDadWalkWeight = 0;
+    this.townDadSitWeight = 0;
+    this.townMomIdleWeight = 1;
+    this.townMomWalkWeight = 0;
+    this.townMomSitWeight = 0;
+    this.townDadIdle?.setEffectiveWeight(1);
+    this.townDadWalk?.setEffectiveWeight(0);
+    this.townDadSit?.setEffectiveWeight(0);
+    this.townMomIdle?.setEffectiveWeight(1);
+    this.townMomWalk?.setEffectiveWeight(0);
+    this.townMomSit?.setEffectiveWeight(0);
+    this.townDadMixer?.update(0);
+    this.townMomMixer?.update(0);
+  }
+
+  private async playTownParentIntro(): Promise<void> {
+    this.stageTownParentsAtEntrance();
+    this.cutscene = true;
+    this.movementEnabled = false;
+    this.ui.setObjective('', false);
+    this.camMode = 'cinematic';
+    this.setCinematic(
+      new THREE.Vector3(3.25, 1.95, -1.0),
+      new THREE.Vector3(0, 1.05, 2.55),
+      1.35,
+    );
+    this.snapCamera();
+
+    await this.ui.say('父さん', '千尋、ここで何か食べていこう。腹が減った。');
+    await this.ui.say('母さん', 'いい匂いね。少し食べてから新居へ行きましょう。');
+    await this.ui.say('千尋', '私はいい。知らない店で食べるの、怖いよ……。');
+    await this.ui.say('父さん', 'すぐ済むさ。先に行って席を取って待っていろ。');
+    await this.ui.say('母さん', '千尋もおいで。座って待ってればいいわ。');
+
+    this.camMode = 'follow';
+    this.camYaw = Math.PI;
+    this.camPitch = 0.26;
+    this.camDistance = 4.6;
+    this.camTargetDistance = 4.6;
+    this.camLookHeight = 1.05;
+    this.snapCamera();
+    this.townParentState = 'walk';
+    await this.walkTownParentsToStall(5000);
+    this.townParentState = 'sit';
+    this.setTownStoolsVisible(true);
+    await wait(650);
+    this.cutscene = false;
+    this.movementEnabled = true;
+    this.ui.setObjective('市街の奥へ進む');
+  }
+
   private async enterTown(): Promise<void> {
+    // From the market scene through the bridge and the end of Chapter One.
+    this.audio.playTheme('/audio/nobody_diner.mp3', 0.5);
     this.setWorld('town');
     this.townTime = 0;
     this.townNight = false;
@@ -617,17 +1277,16 @@ export class ChapterOne3D {
     this.camMode = 'follow';
     this.camYaw = Math.PI;
     this.camPitch = 0.26;
-    this.camDistance = 7.2;
-    this.camTargetDistance = 7.2;
-    this.ui.setObjective('両親を探す');
+    this.camDistance = 4.6;
+    this.camTargetDistance = 4.6;
+    this.camLookHeight = 1.05;
+    this.ui.setObjective('', false);
+    this.stageTownParentsAtEntrance();
     this.snapCamera();
     await this.ui.fade(false, 1100);
     this.audio.setMood('day');
-    this.cutscene = false;
-    this.movementEnabled = true;
     await this.ui.narrate('草の丘の先には、陽に照らされた旧市街があった。');
-    await this.ui.say('千尋', 'いい匂い……でも、誰もいない。');
-    this.ui.setObjective('市街の奥へ進む');
+    await this.playTownParentIntro();
     await this.waitForReach(this.town.stallTrigger, 2.4);
     this.movementEnabled = false;
     this.cutscene = true;
@@ -637,8 +1296,6 @@ export class ChapterOne3D {
       new THREE.Vector3(2.05, 1.02, 13.9),
       1.25,
     );
-    await this.ui.say('父さん', '千尋、早く来い！ ここの料理は最高だ。');
-    await this.ui.say('母さん', '店主はいないみたい。お金はテーブルに置いておけばいい。');
     await this.ui.say('千尋', '食べないで！ ここがどこかも分からないのに——');
     this.startTransformation();
     await wait(650);
@@ -662,7 +1319,59 @@ export class ChapterOne3D {
     await this.ui.narrate('遠くで電車が水の上を走る音。空が、急に暗くなった。');
     await wait(500);
     this.memories.push('旧市街の夕暮れ、両親は豚になった。');
+    this.cutscene = false;
+    this.movementEnabled = true;
+    this.camMode = 'follow';
+    this.camYaw = Math.PI;
+    this.camPitch = 0.24;
+    this.camDistance = 4.6;
+    this.camTargetDistance = 4.6;
+    this.camLookHeight = 1.05;
+    this.ui.setObjective('石段を上り、上の印へ');
+    this.snapCamera();
+    // Show a marker on the upper landing. The player has to climb the actual
+    // steps and step into it; there is no automatic walk up the staircase.
+    await this.waitForReach(new THREE.Vector3(0, 2.675, 49.9), 1.5, true);
+    this.movementEnabled = false;
+    this.cutscene = true;
+    this.ui.hideObjective();
+    await this.ui.fade(true, 700);
+    await this.meetHakuAtStairs();
     this.finishChapter();
+  }
+
+  /** Direct market preview used by ?scene=town for checking scene dressing. */
+  enterMarketScene(): void {
+    this.chapterNumber = 1;
+    this.phase = 'playing';
+    this.ui.setActive(true);
+    this.ui.showHud(true);
+    this.audio.init();
+    this.audio.playTheme('/audio/nobody_diner.mp3', 0.5);
+    this.audio.setMood('day');
+    this.setWorld('town');
+    this.townTime = 0.18;
+    this.townNight = false;
+    this.townMood = 'day';
+    this.town.setTime(this.townTime);
+    this.applyTownFog();
+    this.player.position.copy(this.town.playerStart);
+    this.player.rotation.y = 0;
+    this.player.visible = true;
+    this.playerVisible = true;
+    this.camMode = 'follow';
+    this.camYaw = Math.PI;
+    this.camPitch = 0.26;
+    this.camDistance = 4.6;
+    this.camTargetDistance = 4.6;
+    this.camLookHeight = 1.05;
+    this.cutscene = true;
+    this.movementEnabled = false;
+    this.ui.setObjective('', false);
+    this.stageTownParentsAtEntrance();
+    this.snapCamera();
+    void this.ui.fade(false, 0);
+    void this.playTownParentIntro();
   }
 
   async beginChapterTwo(): Promise<void> {
@@ -672,43 +1381,125 @@ export class ChapterOne3D {
     this.ui.setActive(true);
     this.ui.showHud(true);
     this.audio.init();
+    this.audio.stopTheme(0);
     this.audio.setMood('night');
+    this.setWorld('bathhouse');
+    this.bathStage = 'boiler';
+    this.bathhouse.setStage('boiler');
+    this.bathhouse.setHakuWalking(false);
+    this.resetHaku();
+    this.resetYubaba();
+    this.player.position.copy(this.bathhouse.boilerPlayerStart);
+    this.player.rotation.y = Math.PI;
+    this.player.visible = true;
+    this.playerVisible = true;
+    this.camMode = 'follow';
+    this.camYaw = 0;
+    this.camPitch = 0.2;
+    this.camDistance = 4.6;
+    this.camTargetDistance = 4.6;
+    this.camLookHeight = 1.5;
+    this.movementEnabled = false;
+    this.cutscene = true;
+    this.ui.setObjective('', false);
+    this.snapCamera();
+    await this.ui.fade(true, 0);
+    await this.ui.chapterIntro('第二章', '契約', '湯屋では、名前が自由を意味する。');
     this.audio.cinematicSwell();
+    await this.enterBridge(true);
+  }
+
+  private async meetHakuAtStairs(): Promise<void> {
+    const haku = this.bathhouse.haku;
+    this.town.group.add(haku);
+    haku.position.set(-0.85, 2.675, 49.2);
+    haku.rotation.y = Math.PI / 2;
+    haku.visible = true;
+    haku.userData.facingPlayer = true;
+    this.player.position.set(0.85, 2.675, 49.2);
+    this.player.rotation.y = -Math.PI / 2;
+    this.cutscene = true;
+    this.movementEnabled = false;
+    this.ui.setObjective('', false);
+    this.setCinematic(
+      new THREE.Vector3(0, 4.25, 54.5),
+      new THREE.Vector3(0, 2.9, 49.2),
+      1.25,
+    );
+    this.snapCamera();
+    await this.ui.fade(false, 900);
+    await this.ui.narrate('石段の上には、白い影が立っていた。');
+    await this.ui.say('白龍', '私は白龍。この湯屋で、湯婆婆の下で働いている。');
+    await this.ui.say('千尋', 'ここは……どこ？ お父さんとお母さんが、豚に……。');
+    await this.ui.say('白龍', 'ここは人間の世界ではない。人間は、名前を奪われると帰れなくなる。');
+    await this.ui.say('白龍', 'お前の両親を助けたい。そのためには、湯屋で働くしかない。');
+    await this.ui.say('白龍', 'ボイラー室へ行け。釜爺に仕事を頼むんだ。');
+    await this.ui.say('千尋', '釜爺……？');
+    await this.ui.say('白龍', '今夜、橋のたもとで待っている。来るんだ。');
+    await this.ui.say('千尋', '……うん。');
+    this.memories.push('石段の上で白龍と出会い、両親を助けると約束した。');
+    this.audio.stopTheme(1400);
+    await this.ui.fade(true, 1100);
+  }
+
+  private async enterBridge(chapterTwo = false): Promise<void> {
     this.setWorld('bathhouse');
     this.bathStage = 'bridge';
     this.bathhouse.setStage('bridge');
     this.bathhouse.setHakuWalking(false);
     this.resetHaku();
+    this.bathhouse.haku.visible = chapterTwo;
+    if (chapterTwo) {
+      this.bathhouse.haku.position.set(0, this.bathhouse.bridgeHeightAt(2.6) + 0.02, 2.6);
+      this.bathhouse.haku.rotation.y = 0;
+    }
+    this.resetYubaba();
     this.player.position.copy(this.bathhouse.playerStart);
     this.player.rotation.y = 0;
     this.player.visible = true;
     this.playerVisible = true;
     this.camMode = 'follow';
     this.camYaw = Math.PI;
-    this.camPitch = 0.22;
-    this.camDistance = 5.4;
-    this.camTargetDistance = 5.4;
-    this.camLookHeight = 1.55;
+    this.camPitch = 0.27;
+    this.camDistance = 4.6;
+    this.camTargetDistance = 4.6;
+    this.camLookHeight = 1.02;
     this.movementEnabled = false;
     this.cutscene = true;
-    this.snapCamera();
     this.ui.setObjective('', false);
+    this.snapCamera();
 
-    await this.ui.chapterIntro('第二章', '契約', '湯屋では、名前が自由を意味する。');
-    await this.ui.narrate('橋の下の水は、鏡のように黒い。');
-    await this.ui.narrate('白龍は橋の中央に立ち、背を向けていた。');
-    this.ui.setObjective('白龍についていく');
-    this.cutscene = false;
-    this.movementEnabled = true;
-
-    await this.waitForReach(this.bathhouse.hakuTrigger, 2.6);
-    this.movementEnabled = false;
-    this.cutscene = true;
-    this.setCinematic(new THREE.Vector3(1.8, 1.75, 2.5), new THREE.Vector3(0, 1.05, 6.4), 1.5);
-    await this.ui.say('白龍', '声を出すな。ここは湯屋の縄張りだ。');
-    await this.ui.say('千尋', 'お父さんとお母さんが……豚になっちゃった。');
-    await this.ui.say('白龍', '助けたいなら、ついて来い。橋を渡るときは息を止めろ。');
-    this.memories.push('白龍が湯屋の長い橋で彼女を止めた。');
+    await this.ui.fade(false, 1100);
+    this.audio.setMood('night');
+    this.audio.cinematicSwell();
+    if (chapterTwo) {
+      await this.ui.narrate('白龍が、橋のたもとで待っていた。');
+      await this.ui.say('白龍', '来たか。息を止めて、ついて来い。');
+      this.memories.push('白龍に導かれ、湯屋へ続く橋を渡った。');
+    } else {
+      await this.ui.narrate('橋の下の水は、鏡のように黒い。');
+      await this.ui.narrate('橋の上には、まだ誰もいない。');
+      this.ui.setObjective('橋の下の印へ');
+      this.cutscene = false;
+      this.movementEnabled = true;
+      await this.waitForReach(this.bathhouse.hakuTrigger, 2.6);
+      this.movementEnabled = false;
+      this.cutscene = true;
+      this.ui.hideObjective();
+      this.bathhouse.haku.visible = true;
+      await this.ui.narrate('白い影が、橋の向こうから現れた。');
+      this.bathhouse.haku.userData.facingPlayer = true;
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      this.setCinematic(new THREE.Vector3(1.8, 1.75, 2.5), new THREE.Vector3(0, 1.05, 6.4), 1.5);
+      await this.ui.say('白龍', '私は白龍。この湯屋で、湯婆婆の下で働いている。');
+      await this.ui.say('千尋', 'ここは……どこ？ お父さんとお母さんが、豚に……。');
+      await this.ui.say('白龍', 'ここは人間の世界ではない。人間は、名前を奪われると帰れなくなる。');
+      await this.ui.say('白龍', 'お前の両親を助けたい。そのためには、湯屋で働くしかない。');
+      await this.ui.say('白龍', 'ボイラー室へ行け。釜爺に仕事を頼むんだ。');
+      await this.ui.say('千尋', '釜爺……？');
+      await this.ui.say('白龍', 'ついて来い。橋を渡るときは息を止めろ。');
+      this.memories.push('白龍が湯屋の長い橋で彼女を止め、両親を助けると約束した。');
+    }
 
     this.audio.setMood('mystery');
     this.breathActive = true;
@@ -716,14 +1507,16 @@ export class ChapterOne3D {
     this.ghostHitCooldown = 0;
     this.ui.showBreathHint();
     this.ui.setObjective('Eを押したまま息を止め、白龍について橋を渡る');
-    this.bathhouse.setHakuWalking(true);
-    this.startHakuWalk();
     this.camMode = 'follow';
     this.camYaw = Math.PI;
-    this.camPitch = 0.2;
-    this.camDistance = 5.4;
-    this.camTargetDistance = 5.4;
-    this.camLookHeight = 1.55;
+    this.camPitch = 0.27;
+    this.camDistance = 4.6;
+    this.camTargetDistance = 4.6;
+    this.camLookHeight = 1.02;
+    this.bathhouse.haku.userData.facingPlayer = false;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    this.bathhouse.setHakuWalking(true);
+    this.startHakuWalk();
     this.cutscene = false;
     this.movementEnabled = true;
 
@@ -739,13 +1532,16 @@ export class ChapterOne3D {
     await this.ui.say('千尋', 'あなたは？');
     await this.ui.say('白龍', '必ず見つける。');
     await this.ui.narrate('彼女は深く息を吸い、湯屋へ入っていった。');
+    this.audio.stopTheme(1800);
     await this.ui.fade(true, 1100);
-    await this.enterBoiler();
+    if (chapterTwo) await this.enterBoiler();
   }
 
   private async enterBoiler(): Promise<void> {
+    this.audio.playTheme('/audio/boiler_bug.mp3', 0.45);
     this.bathStage = 'boiler';
     this.bathhouse.setStage('boiler');
+    this.bathhouse.lin.visible = false;
     this.fillLight.intensity = 1.35;
     this.player.position.copy(this.bathhouse.boilerPlayerStart);
     this.player.rotation.y = Math.PI;
@@ -765,7 +1561,6 @@ export class ChapterOne3D {
     await this.ui.say('千尋', 'お願いします。ここで働かせてください。');
     await this.ui.say('釜爺', '人手は足りている。上へ行って、湯婆婆に頼め。');
     await this.ui.say('千尋', '両親が豚にされてしまったんです……ここに残らないと。');
-    await this.ui.say('リン', '釜爺、私が上まで連れて行きます。');
     await this.ui.say('釜爺', 'まず、この石炭を炉にくべろ。');
     this.memories.push('釜爺が彼女に最初の仕事をくれた。');
 
@@ -807,9 +1602,221 @@ export class ChapterOne3D {
     this.movementEnabled = false;
     this.setCinematic(new THREE.Vector3(3.2, 2.5, 1.8), new THREE.Vector3(-1.4, 2.0, -3.0), 1.5);
     await this.ui.say('釜爺', 'なかなか手際がいい。上へ行け。私が入れたとは言うなよ。');
-    await this.ui.say('リン', 'ついて来て。人間だってことは、誰にも言わないで。');
+    await this.introduceLin();
+    this.camMode = 'follow';
+    this.camYaw = 0;
+    this.camPitch = 0.2;
+    this.camDistance = 4.6;
+    this.camTargetDistance = 4.6;
+    this.camLookHeight = 1.5;
+    this.cutscene = false;
+    this.movementEnabled = true;
+    this.ui.setObjective('リンに話しかける');
+    await this.waitForInteract(this.bathhouse.lin.position, 2.0, 'リンに話しかける');
+    this.ui.hideInteractHint();
+    await this.followLinToDoor();
+  }
+
+  private async moveLinTo(target: THREE.Vector3, duration = 1800): Promise<void> {
+    const lin = this.bathhouse.lin;
+    const from = lin.position.clone();
+    const fromYaw = lin.rotation.y;
+    const toYaw = Math.atan2(target.x - from.x, target.z - from.z);
+    let delta = ((toYaw - fromYaw + Math.PI) % (Math.PI * 2)) - Math.PI;
+    if (delta < -Math.PI) delta += Math.PI * 2;
+    await new Promise<void>((resolve) => {
+      const started = performance.now();
+      const tick = () => {
+        const t = Math.min(1, (performance.now() - started) / duration);
+        const ease = t * t * (3 - 2 * t);
+        lin.position.lerpVectors(from, target, ease);
+        lin.rotation.y = fromYaw + delta * ease;
+        if (t < 1) requestAnimationFrame(tick);
+        else resolve();
+      };
+      tick();
+    });
+  }
+
+  private async closeBoilerDoor(): Promise<void> {
+    const leaves = this.bathhouse.boilerDoor.userData.leaves as THREE.Group[] | undefined;
+    if (!leaves || leaves.length < 2) return;
+    await new Promise<void>((resolve) => {
+      const left = leaves[0].rotation.y;
+      const right = leaves[1].rotation.y;
+      const started = performance.now();
+      const duration = 620;
+      const tick = () => {
+        const t = Math.min(1, (performance.now() - started) / duration);
+        const ease = 1 - Math.pow(1 - t, 3);
+        leaves[0].rotation.y = left * (1 - ease);
+        leaves[1].rotation.y = right * (1 - ease);
+        if (t < 1) requestAnimationFrame(tick);
+        else resolve();
+      };
+      tick();
+    });
+  }
+
+  private async introduceLin(): Promise<void> {
+    const lin = this.bathhouse.lin;
+    this.cutscene = true;
+    this.movementEnabled = false;
+    // Level the camera on the back door before she appears.
+    const lightShaft = this.bathhouse.group.getObjectByName('boilerLightShaft');
+    if (lightShaft) lightShaft.visible = false;
+    this.setCinematic(
+      new THREE.Vector3(3.0, 1.72, 1.7),
+      new THREE.Vector3(-4.05, 1.4, -4.65),
+      1.2,
+    );
+    this.snapCamera();
+    await wait(450);
+    await this.openBoilerDoor();
+    await wait(180);
+    lin.position.set(-4.15, 0, -5.02);
+    lin.rotation.y = 0;
+    lin.visible = true;
+    if (this.linWalkAction) {
+      this.linWalkAction.reset();
+      this.linWalkAction.paused = false;
+      this.linWalkAction.play();
+    }
+    await this.moveLinTo(new THREE.Vector3(-4.15, 0, -4.25), 700);
+    this.setCinematic(
+      new THREE.Vector3(3.0, 2.2, 2.2),
+      new THREE.Vector3(-2.7, 1.2, -2.6),
+      1.15,
+    );
+    await this.moveLinTo(new THREE.Vector3(-4.75, 0, -3.0), 900);
+    await this.moveLinTo(new THREE.Vector3(-4.7, 0, -0.8), 1100);
+    await this.moveLinTo(new THREE.Vector3(-2.6, 0, -0.45), 850);
+    await this.moveLinTo(new THREE.Vector3(-0.65, 0, -1.1), 900);
+    if (this.linWalkAction) this.linWalkAction.paused = true;
+    lin.rotation.y = Math.atan2(
+      this.player.position.x - lin.position.x,
+      this.player.position.z - lin.position.z,
+    );
+    await this.closeBoilerDoor();
+    this.setCinematic(
+      new THREE.Vector3(2.2, 1.85, 1.6),
+      new THREE.Vector3(-0.7, 1.1, -1.2),
+      1.25,
+    );
+    await this.ui.say('リン', '……人間？ なんでこんなところにいるの。汚いし、匂いがつくでしょ。早く出て行って。');
+    await this.ui.say('千尋', 'お願い。湯婆婆に会って、両親を助けたいんです。');
+    await this.ui.say('リン', 'はあ……分かったよ。人間だってことは黙ってるから、ついて来な。');
+    await this.ui.say('釜爺', 'リン、頼んだぞ。');
+  }
+
+  private samplePath(points: THREE.Vector3[], t: number): THREE.Vector3 {
+    if (points.length === 0) return new THREE.Vector3();
+    if (points.length === 1 || t <= 0) return points[0].clone();
+    const lengths: number[] = [];
+    let total = 0;
+    for (let i = 1; i < points.length; i++) {
+      const length = points[i].distanceTo(points[i - 1]);
+      lengths.push(length);
+      total += length;
+    }
+    let remaining = THREE.MathUtils.clamp(t, 0, 1) * total;
+    for (let i = 1; i < points.length; i++) {
+      if (remaining <= lengths[i - 1] || i === points.length - 1) {
+        const local = lengths[i - 1] > 0 ? Math.min(1, remaining / lengths[i - 1]) : 1;
+        return points[i - 1].clone().lerp(points[i], local);
+      }
+      remaining -= lengths[i - 1];
+    }
+    return points[points.length - 1].clone();
+  }
+
+  private async followLinToDoor(): Promise<void> {
+    const lin = this.bathhouse.lin;
+    this.cutscene = true;
+    this.movementEnabled = false;
+    this.ui.hideObjective();
+    await this.ui.say('リン', 'ついて来て。人間だってことがばれる前に、上へ行くよ。');
+    this.camMode = 'follow';
+    this.camYaw = 0;
+    this.camPitch = 0.2;
+    this.camDistance = 4.6;
+    this.camTargetDistance = 4.6;
+    this.camLookHeight = 1.25;
+    this.snapCamera();
+    this.ui.setObjective('リンについて行く');
+    const linPath = [
+      lin.position.clone(),
+      new THREE.Vector3(-2.6, 0, -0.45),
+      new THREE.Vector3(-4.7, 0, -0.8),
+      new THREE.Vector3(-4.75, 0, -3.0),
+      new THREE.Vector3(-4.15, 0, -4.55),
+    ];
+    const playerPath = [
+      this.player.position.clone(),
+      new THREE.Vector3(-2.35, 0, -0.7),
+      new THREE.Vector3(-4.25, 0, -1.2),
+      new THREE.Vector3(-4.3, 0, -3.0),
+      new THREE.Vector3(-3.9, 0, -4.05),
+    ];
+    if (this.linWalkAction) {
+      this.linWalkAction.reset();
+      this.linWalkAction.paused = false;
+      this.linWalkAction.play();
+    }
+    this.animMoving = true;
+    this.animBackward = false;
+    this.animSpeed = 2.1;
+    await new Promise<void>((resolve) => {
+      const started = performance.now();
+      const duration = 5200;
+      let last = started;
+      const tick = () => {
+        const now = performance.now();
+        const dt = Math.max(0.001, (now - last) / 1000);
+        last = now;
+        const t = Math.min(1, (now - started) / duration);
+        const ease = t * t * (3 - 2 * t);
+        const linT = ease;
+        const playerT = THREE.MathUtils.clamp((ease - 0.06) / 0.94, 0, 1);
+        lin.position.copy(this.samplePath(linPath, linT));
+        this.player.position.copy(this.samplePath(playerPath, playerT));
+        const linAhead = this.samplePath(linPath, Math.min(1, linT + 0.025));
+        const playerAhead = this.samplePath(playerPath, Math.min(1, playerT + 0.025));
+        lin.rotation.y = smoothAngle(lin.rotation.y, Math.atan2(linAhead.x - lin.position.x, linAhead.z - lin.position.z), 1 - Math.exp(-dt * 7));
+        this.player.rotation.y = smoothAngle(this.player.rotation.y, Math.atan2(playerAhead.x - this.player.position.x, playerAhead.z - this.player.position.z), 1 - Math.exp(-dt * 5.5));
+        if (t < 1) requestAnimationFrame(tick);
+        else resolve();
+      };
+      tick();
+    });
+    this.animMoving = false;
+    if (this.linWalkAction) this.linWalkAction.paused = true;
+    this.ui.hideObjective();
+    this.movementEnabled = false;
+    await this.openBoilerDoor();
+    await wait(450);
+    this.audio.stopTheme(1600);
     await this.ui.fade(true, 1000);
     await this.enterOffice();
+  }
+
+  private async openBoilerDoor(): Promise<void> {
+    const leaves = this.bathhouse.boilerDoor.userData.leaves as THREE.Group[] | undefined;
+    if (!leaves || leaves.length < 2) return;
+    this.audio.play('click');
+    await new Promise<void>((resolve) => {
+      const started = performance.now();
+      const duration = 720;
+      const tick = () => {
+        const t = Math.min(1, (performance.now() - started) / duration);
+        const ease = 1 - Math.pow(1 - t, 3);
+        leaves[0].rotation.y = -1.25 * ease;
+        leaves[1].rotation.y = 1.25 * ease;
+        if (t < 1) requestAnimationFrame(tick);
+        else resolve();
+      };
+      tick();
+    });
   }
 
   private async enterOffice(): Promise<void> {
@@ -818,11 +1825,28 @@ export class ChapterOne3D {
     this.fillLight.intensity = 1.1;
     this.player.position.copy(this.bathhouse.officePlayerStart);
     this.player.rotation.y = Math.PI;
-    this.camMode = 'cinematic';
-    this.setCinematic(new THREE.Vector3(0.35, 2.5, 6.2), new THREE.Vector3(0, 1.38, -2.8), 1.4);
+    this.camMode = 'follow';
+    this.camYaw = 0;
+    this.camPitch = 0.22;
+    this.camDistance = 4.6;
+    this.camTargetDistance = 4.6;
+    this.camLookHeight = 1.3;
+    this.cutscene = false;
+    this.movementEnabled = true;
     this.snapCamera();
     await this.ui.fade(false, 900);
-    await this.ui.narrate('紙灯籠が頭の上で揺れている。湯婆婆が机の向こうに座っていた。');
+    this.startYubabaPacing();
+    this.ui.setObjective('机の前の湯婆婆に話しかける');
+    await this.waitForInteract(this.bathhouse.officeDeskTrigger, 1.7, '湯婆婆と話す');
+    this.ui.hideInteractHint();
+    this.movementEnabled = false;
+    this.cutscene = true;
+    this.setCinematic(new THREE.Vector3(0.45, 2.58, 6.0), new THREE.Vector3(0, 1.42, -2.0), 1.4);
+    await this.beginYubabaMeeting();
+  }
+
+  private async beginYubabaMeeting(): Promise<void> {
+    await this.ui.narrate('紙灯籠の下で、湯婆婆が机の前を行ったり来たりしている。');
     this.ui.setObjective('湯婆婆に仕事を願い出る');
     await this.ui.say('湯婆婆', '人間？ 誰が入れた？');
     await this.ui.say('千尋', '仕事をください。');
@@ -850,6 +1874,8 @@ export class ChapterOne3D {
   }
 
   private finishChapterTwo(): void {
+    this.yubabaPacing = false;
+    if (this.yubabaWalkAction) this.yubabaWalkAction.paused = true;
     this.audio.setMood('ending');
     this.phase = 'ended';
     this.ui.setActive(false);
@@ -898,28 +1924,69 @@ export class ChapterOne3D {
     } else if (name === 'tunnel') {
       this.scene.background = new THREE.Color(0x090b09);
       this.scene.fog = new THREE.Fog(0x11110f, 2.5, 34);
-      this.camDistance = 3.8;
-      this.camTargetDistance = 3.8;
+      this.camDistance = 4.6;
+      this.camTargetDistance = 4.6;
     } else if (name === 'meadow') {
       this.scene.background = new THREE.Color(0x9ac9e4);
       this.scene.fog = new THREE.Fog(0xd7e7da, 48, 155);
-      this.camDistance = 4.5;
-      this.camTargetDistance = 4.5;
-      this.camLookHeight = 1.72;
-      this.camera.fov = 52;
-      this.camera.updateProjectionMatrix();
+      this.camDistance = 4.6;
+      this.camTargetDistance = 4.6;
     } else {
       this.scene.background = this.town.fogColor.clone();
       this.scene.fog = new THREE.Fog(this.town.fogColor.clone(), this.town.fogNear, this.town.fogFar);
-      this.camDistance = 4.35;
-      this.camTargetDistance = 4.35;
+      this.camDistance = 4.6;
+      this.camTargetDistance = 4.6;
     }
-    if (name !== 'meadow' && this.camera.fov !== 42) {
-      this.camera.fov = 42;
-      this.camera.updateProjectionMatrix();
-    }
-    this.camLookHeight = name === 'meadow' ? 1.72 : 1.02;
+    this.camera.fov = 42;
+    this.camera.updateProjectionMatrix();
+    this.camLookHeight = 1.05;
     this.moveTarget = null;
+    this.refreshCameraColliders();
+  }
+
+  private refreshCameraColliders(): void {
+    const groups: Record<WorldName, THREE.Group> = {
+      field: this.field.group,
+      tunnel: this.tunnel.group,
+      meadow: this.meadow.group,
+      town: this.town.group,
+      bathhouse: this.bathhouse.group,
+    };
+    const group = groups[this.world];
+    this.cameraColliders = [];
+    group.traverse((object) => {
+      if (!(object instanceof THREE.Mesh) || object instanceof THREE.SkinnedMesh) return;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      if (materials.some((material) => material.transparent && material.opacity < 0.75)) return;
+      if (object.userData.cameraIgnore) return;
+      this.cameraColliders.push(object);
+    });
+  }
+
+  private resolveCameraCollision(pos: THREE.Vector3, look: THREE.Vector3): THREE.Vector3 {
+    if (this.cameraColliders.length === 0) return pos;
+    const offset = pos.clone().sub(look);
+    const distance = offset.length();
+    if (distance < 0.45) return pos;
+    const direction = offset.clone().normalize();
+    // Cast back from the desired camera position toward Chihiro. The first
+    // wall encountered is the one the camera would otherwise sit behind.
+    const toTarget = direction.clone().negate();
+    this.cameraRaycaster.set(pos, toTarget);
+    this.cameraRaycaster.far = distance;
+    const hits = this.cameraRaycaster.intersectObjects(this.cameraColliders, false);
+    for (const hit of hits) {
+      let node: THREE.Object3D | null = hit.object;
+      let visible = true;
+      while (node) {
+        if (!node.visible) { visible = false; break; }
+        node = node.parent;
+      }
+      if (!visible) continue;
+      const adjusted = pos.clone().addScaledVector(toTarget, Math.min(distance, hit.distance + 0.28));
+      return adjusted;
+    }
+    return pos;
   }
 
   private placeParentsAt(progress: number): void {
@@ -934,16 +2001,18 @@ export class ChapterOne3D {
     });
   }
 
-  private waitForReach(point: THREE.Vector3, radius: number): Promise<void> {
+  private waitForReach(point: THREE.Vector3, radius: number, showMarker = true): Promise<void> {
     return new Promise((resolve) => {
       this.reachTarget = { point: point.clone(), radius, resolve };
-      const ground = point.y + 0.04;
-      this.reachRing.position.set(point.x, ground, point.z);
-      this.reachBeam.position.set(point.x, point.y + 1.3, point.z);
-      this.reachGlow.position.set(point.x, point.y + 1.0, point.z);
-      this.reachRing.visible = true;
-      this.reachBeam.visible = true;
-      this.reachGlow.visible = true;
+      if (showMarker) {
+        const ground = point.y + 0.04;
+        this.reachRing.position.set(point.x, ground, point.z);
+        this.reachBeam.position.set(point.x, point.y + 1.3, point.z);
+        this.reachGlow.position.set(point.x, point.y + 1.0, point.z);
+      }
+      this.reachRing.visible = showMarker;
+      this.reachBeam.visible = showMarker;
+      this.reachGlow.visible = showMarker;
     });
   }
 
@@ -1047,7 +2116,8 @@ export class ChapterOne3D {
       this.followLook.copy(this.cine.look);
       this.camera.lookAt(this.cine.look);
     } else {
-      this.camera.position.copy(this.followPos);
+      const resolved = this.resolveCameraCollision(this.followPos, this.followLookTarget);
+      this.camera.position.copy(resolved);
       this.followLook.copy(this.followLookTarget);
       this.camera.lookAt(this.followLook);
     }
@@ -1092,6 +2162,19 @@ export class ChapterOne3D {
     if (this.camMode === 'cinematic' && this.cine) {
       desiredPos = this.cine.pos;
       desiredLook = this.cine.look;
+    }
+    if (this.camMode === 'follow') {
+      desiredPos = this.resolveCameraCollision(desiredPos, desiredLook);
+    }
+    if (!this.ui.blocking) {
+      this.dialogueLookYaw = 0;
+      this.dialogueLookPitch = 0;
+    } else if (this.dialogueLookYaw !== 0 || this.dialogueLookPitch !== 0) {
+      const offset = desiredPos.clone().sub(desiredLook);
+      const spherical = new THREE.Spherical().setFromVector3(offset);
+      spherical.theta += this.dialogueLookYaw;
+      spherical.phi = THREE.MathUtils.clamp(spherical.phi - this.dialogueLookPitch, 0.3, 1.6);
+      desiredPos = desiredLook.clone().add(new THREE.Vector3().setFromSpherical(spherical));
     }
     const speed = this.camMode === 'cinematic' ? (this.cine?.speed ?? 2.2) : 7.0;
     this.camera.position.lerp(desiredPos, 1 - Math.exp(-dt * speed));
@@ -1213,27 +2296,29 @@ export class ChapterOne3D {
   private updatePlayer(dt: number): void {
     const input = this.getInput();
     this.animBackward = input.forward < 0;
-    const hasForward = Math.abs(input.forward) > 0.05;
-    const hasTurn = Math.abs(input.turn) > 0.05;
     const running = this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
     let direction = new THREE.Vector3();
-    let turning = false;
     let walking = false;
 
     if (this.canMove()) {
-      // tank controls: A / D turn the character, W / S move along her facing
-      if (hasTurn) {
-        this.player.rotation.y += input.turn * 2.15 * dt;
-        turning = true;
-      }
-      if (hasForward) {
+      // Camera-relative controls for every walkable scene: the mouse sets the
+      // camera heading; W/S move forward/back and A/D walk sideways. The camera
+      // itself never turns from A/D.
+      const cameraForward = new THREE.Vector3(-Math.sin(this.camYaw), 0, -Math.cos(this.camYaw));
+      const cameraRight = new THREE.Vector3(Math.cos(this.camYaw), 0, -Math.sin(this.camYaw));
+      direction.copy(cameraForward).multiplyScalar(input.forward);
+      direction.addScaledVector(cameraRight, -input.turn);
+      const inputMagnitude = Math.min(1, direction.length());
+      if (inputMagnitude > 0.01) {
+        direction.normalize();
         this.moveTarget = null;
         const baseSpeed = this.world === 'meadow' ? 3.0 : 2.7;
-        const speed = input.forward > 0 ? (running ? 4.35 : baseSpeed) : 1.8;
-        direction.set(Math.sin(this.player.rotation.y), 0, Math.cos(this.player.rotation.y)).multiplyScalar(input.forward);
-        const next = this.player.position.clone().addScaledVector(direction, speed * dt);
+        const speed = input.forward < -0.05 ? 1.8 : running ? 4.35 : baseSpeed;
+        const next = this.player.position.clone().addScaledVector(direction, speed * inputMagnitude * dt);
         this.clampPlayerPosition(next);
         this.player.position.copy(next);
+        const desiredHeading = Math.atan2(direction.x, direction.z);
+        this.player.rotation.y = smoothAngle(this.player.rotation.y, desiredHeading, 1 - Math.exp(-dt * 5.5));
         walking = true;
       } else if (this.moveTarget) {
         const toTarget = new THREE.Vector3(
@@ -1254,10 +2339,6 @@ export class ChapterOne3D {
           this.player.position.copy(next);
           walking = true;
         }
-      }
-      if (turning || walking || hasForward) {
-        const behind = this.player.rotation.y + Math.PI;
-        this.camYaw = smoothAngle(this.camYaw, behind, 1 - Math.exp(-dt * 4.0));
       }
     }
 
@@ -1282,16 +2363,6 @@ export class ChapterOne3D {
         this.audio.play('step');
         this.spawnStepPuff();
       }
-    } else if (turning) {
-      if (!this.mixer) {
-        this.walkPhase += dt * 3.0;
-        this.modelRoot.position.y = Math.abs(Math.sin(this.walkPhase)) * 0.008;
-        this.modelRoot.rotation.z = -input.turn * 0.026;
-      }
-    } else if (!this.mixer) {
-      this.walkPhase += dt * 1.4;
-      this.modelRoot.position.y = Math.sin(this.clock.elapsedTime * 1.5) * 0.006;
-      this.modelRoot.rotation.z = 0;
     }
 
     if (!this.autoWalk) this.animMoving = walking;
@@ -1335,13 +2406,14 @@ export class ChapterOne3D {
     if (this.world === 'field') {
       p.x = THREE.MathUtils.clamp(p.x, -15, 15);
       p.z = THREE.MathUtils.clamp(p.z, -4.5, 22.5);
+      p.y = this.field.heightAt(p.x, p.z);
     } else if (this.world === 'tunnel') {
       p.x = THREE.MathUtils.clamp(p.x, -2.25, 2.25);
       p.z = THREE.MathUtils.clamp(p.z, 1.2, 29.2);
     } else if (this.world === 'meadow') {
       p.x = THREE.MathUtils.clamp(p.x, -18, 18);
       p.z = THREE.MathUtils.clamp(p.z, -2.5, 36);
-      p.y = this.meadow.heightAt(p.x, p.z);
+      p.y = this.meadow.heightAt(p.x, p.z) + 0.022;
     } else if (this.world === 'bathhouse') {
       if (this.bathStage === 'office') {
         p.x = THREE.MathUtils.clamp(p.x, -4.7, 4.7);
@@ -1351,13 +2423,22 @@ export class ChapterOne3D {
         p.z = THREE.MathUtils.clamp(p.z, -4.7, 4.8);
       } else {
         p.x = THREE.MathUtils.clamp(p.x, -1.7, 1.7);
-        p.z = THREE.MathUtils.clamp(p.z, 0.0, 20.2);
+        p.z = THREE.MathUtils.clamp(p.z, -1.5, 20.2);
+        p.y = this.bathhouse.bridgeHeightAt(p.z);
       }
-      p.y = 0;
+      if (this.bathStage !== 'bridge') p.y = 0;
     } else {
-      p.x = THREE.MathUtils.clamp(p.x, -4.55, 4.55);
-      p.z = THREE.MathUtils.clamp(p.z, 0.6, 34);
-      p.y = 0;
+      // Town: after the market, the stone stairway leads up toward the bridge.
+      const onStairs = p.z > 37.4;
+      p.x = THREE.MathUtils.clamp(p.x, onStairs ? -7.2 : -4.55, onStairs ? 7.2 : 4.55);
+      p.z = THREE.MathUtils.clamp(p.z, 0.6, 50.8);
+      if (p.z >= 48.4) {
+        p.y = 2.675;
+      } else if (p.z >= 37.4) {
+        p.y = (Math.floor(p.z - 37.4) + 1) * 0.24;
+      } else {
+        p.y = 0;
+      }
     }
   }
 
@@ -1408,6 +2489,11 @@ export class ChapterOne3D {
     } else if (this.world === 'bathhouse') {
       this.bathhouse.update(t, dt);
       this.hakuMixer?.update(dt);
+      this.cancelHakuWalkTurn();
+      this.yubabaMixer?.update(dt);
+      this.linMixer?.update(dt);
+      this.kamajiMixer?.update(dt);
+      this.updateYubabaPacing(dt);
       this.updateBreathAndGhosts(dt);
     } else {
       const target = this.townNight
@@ -1415,6 +2501,7 @@ export class ChapterOne3D {
         : THREE.MathUtils.clamp((this.player.position.z - 1.5) / 15, 0, 0.82);
       this.townTime = THREE.MathUtils.damp(this.townTime, target, 0.9, dt);
       this.town.setTime(this.townTime);
+      this.town.updateGhosts(t, this.townTime);
       this.applyTownFog();
       this.fillLight.intensity = THREE.MathUtils.lerp(0.9, 0.12, this.townTime);
       if (this.townTime > 0.45 && this.townMood === 'day') {
@@ -1517,6 +2604,7 @@ export class ChapterOne3D {
     this.updateCamera(dt);
     this.updateAmbient(dt);
     this.updateAnimation(dt);
+    this.updateDadAnimations(dt);
   }
 
   private loop = (): void => {
@@ -1528,6 +2616,9 @@ export class ChapterOne3D {
     if (hint) {
       hint.classList.toggle('hidden', this.phase !== 'playing' || this.cutscene || this.ui.blocking || !this.movementEnabled);
     }
+    this.canvas.classList.toggle('dialogue-look', this.phase === 'playing' && this.ui.blocking);
+    this.stage.classList.toggle('hide-cursor', this.phase === 'playing');
+    document.body.classList.toggle('hide-cursor', this.phase === 'playing');
     if (this.pointerLocked && (this.phase !== 'playing' || this.ui.blocking || this.cutscene || !this.movementEnabled)) {
       document.exitPointerLock?.();
     }
@@ -1594,13 +2685,27 @@ export class ChapterOne3D {
       this.ui.toast('マウスロックが使えないため、フリー視点に切り替えました', 2200);
     });
     document.addEventListener('mousemove', (event) => {
-      if (!canLook()) return;
+      if (this.phase !== 'playing' || this.paused) return;
       if (this.pointerLocked) {
         this.camYaw -= event.movementX * 0.0024;
         this.camPitch = THREE.MathUtils.clamp(this.camPitch + event.movementY * 0.0022, 0.08, 0.62);
         return;
       }
-      if (!this.freeLook || event.target !== this.canvas) return;
+      // Moving the mouse over the scene turns the camera immediately; no click
+      // or drag is required. This works in every explorable scene.
+      if (!this.dragging && event.target === this.canvas) {
+        const dx = THREE.MathUtils.clamp(event.movementX || 0, -90, 90);
+        const dy = THREE.MathUtils.clamp(event.movementY || 0, -90, 90);
+        if (this.ui.blocking) {
+          this.dialogueLookYaw -= dx * 0.0034;
+          this.dialogueLookPitch = THREE.MathUtils.clamp(this.dialogueLookPitch + dy * 0.0024, -0.85, 0.85);
+        } else {
+          this.camYaw -= dx * 0.0034;
+          this.camPitch = THREE.MathUtils.clamp(this.camPitch + dy * 0.0024, 0.08, 0.62);
+        }
+        return;
+      }
+      if (!canLook() || !this.freeLook || event.target !== this.canvas) return;
       const dx = THREE.MathUtils.clamp(event.clientX - this.freeLookLast.x, -70, 70);
       const dy = THREE.MathUtils.clamp(event.clientY - this.freeLookLast.y, -70, 70);
       this.freeLookLast.x = event.clientX;
@@ -1612,7 +2717,16 @@ export class ChapterOne3D {
       if (event.button !== undefined && event.button !== 0) return;
       if (this.phase !== 'playing' || this.paused) return;
       if (this.ui.blocking) {
-        this.ui.advance();
+        // Dialogue is open: drag to look around. Advancing is handled only by
+        // the dialogue panel's own pointerdown handler.
+        this.pointerId = event.pointerId;
+        this.dragging = true;
+        this.dragMoved = false;
+        this.dialogueLookDrag = true;
+        this.dragLast.x = event.clientX;
+        this.dragLast.y = event.clientY;
+        this.canvas.setPointerCapture?.(event.pointerId);
+        this.canvas.classList.add('dragging', 'dialogue-look');
         return;
       }
       if (!coarsePointer() && !this.pointerLocked) {
@@ -1653,22 +2767,40 @@ export class ChapterOne3D {
       this.dragLast.x = event.clientX;
       this.dragLast.y = event.clientY;
       if (this.dragMoved) {
-        this.camYaw -= dx * 0.005;
-        this.camPitch = THREE.MathUtils.clamp(this.camPitch + dy * 0.0028, 0.08, 0.62);
+        if (this.dialogueLookDrag) {
+          this.dialogueLookYaw -= dx * 0.005;
+          this.dialogueLookPitch = THREE.MathUtils.clamp(this.dialogueLookPitch + dy * 0.003, -0.85, 0.85);
+        } else {
+          this.camYaw -= dx * 0.005;
+          this.camPitch = THREE.MathUtils.clamp(this.camPitch + dy * 0.0028, 0.08, 0.62);
+        }
       }
     });
     const endDrag = (event: PointerEvent) => {
       if (!this.dragging) return;
       const wasDrag = this.dragMoved;
+      const wasDialogueLook = this.dialogueLookDrag;
       this.dragging = false;
-      this.canvas.classList.remove('dragging');
-      if (!wasDrag && event.pointerId === this.pointerId) {
+      this.dialogueLookDrag = false;
+      this.canvas.classList.remove('dragging', 'dialogue-look');
+      if (!wasDrag && !wasDialogueLook && !this.ui.blocking && event.pointerId === this.pointerId) {
         this.tryClickMove(event.clientX, event.clientY);
       }
       this.pointerId = -1;
     };
     this.canvas.addEventListener('pointerup', endDrag);
     this.canvas.addEventListener('pointercancel', endDrag);
+    // A release outside the canvas (common when the camera is pushed against
+    // a wall) must not leave the look-drag latched on.
+    window.addEventListener('pointerup', endDrag);
+    window.addEventListener('pointercancel', endDrag);
+    window.addEventListener('blur', () => {
+      this.keys.clear();
+      this.dragging = false;
+      this.dialogueLookDrag = false;
+      this.pointerId = -1;
+      this.canvas.classList.remove('dragging', 'dialogue-look');
+    });
     this.canvas.addEventListener(
       'wheel',
       (event) => {

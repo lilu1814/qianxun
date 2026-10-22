@@ -19,6 +19,8 @@ const MOODS: Record<Mood, MoodConfig> = {
   ending: { root: 174.61, chord: [1, 1.25, 1.5, 2.0], filter: 900, gain: 0.038, melody: [698.46, 880, 1046.5, 880, 698.46] },
 };
 
+const THREE_CLAMP = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
+
 export class Soundtrack {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -33,6 +35,10 @@ export class Soundtrack {
   private mood: Mood = 'title';
   private melodyTimer: number | null = null;
   private noise: AudioBufferSourceNode | null = null;
+  private theme: HTMLAudioElement | null = null;
+  private themeFadeTimer: number | null = null;
+  private themeVolume = 0.5;
+  private synthMusicMuted = false;
   enabled = true;
 
   init(): void {
@@ -199,7 +205,7 @@ export class Soundtrack {
   private scheduleMelody(): void {
     if (this.melodyTimer) window.clearInterval(this.melodyTimer);
     const play = () => {
-      if (!this.enabled || !this.ctx) return;
+      if (!this.enabled || !this.ctx || this.synthMusicMuted) return;
       const cfg = MOODS[this.mood];
       const note = cfg.melody[Math.floor(Math.random() * cfg.melody.length)];
       this.pluck(note, 0.026, 3.8);
@@ -219,9 +225,10 @@ export class Soundtrack {
       osc.frequency.setTargetAtTime(target, now, 2.2);
     });
     this.filter?.frequency.setTargetAtTime(cfg.filter, now, 2);
-    this.padGain?.gain.setTargetAtTime(cfg.gain, now, 2);
+    const musicLevel = this.synthMusicMuted ? 0.0001 : 1;
+    this.padGain?.gain.setTargetAtTime(cfg.gain * musicLevel, now, 2);
     this.scoreFilter?.frequency.setTargetAtTime(cfg.filter * 0.85, now, 2.4);
-    this.scoreGain?.gain.setTargetAtTime(cfg.gain * 0.55, now, 2.4);
+    this.scoreGain?.gain.setTargetAtTime(cfg.gain * 0.55 * musicLevel, now, 2.4);
     this.scoreOscillators.forEach((osc, i) => {
       const target = i < 3 ? (cfg.root * cfg.chord[i]) / 2 : cfg.root / 2;
       osc.frequency.cancelScheduledValues(now);
@@ -234,6 +241,78 @@ export class Soundtrack {
     this.enabled = enabled;
     if (!this.ctx || !this.master) return;
     this.master.gain.setTargetAtTime(enabled ? 0.72 : 0, this.ctx.currentTime, 0.2);
+    this.fadeThemeTo(enabled ? this.themeVolume : 0, 220);
+  }
+
+  /** Play a produced music track on top of the ambient soundscape. */
+  playTheme(src: string, volume = 0.5): void {
+    if (this.theme && this.theme.dataset.src === src && !this.theme.paused) {
+      this.themeVolume = volume;
+      this.setSynthMusicMuted(true);
+      return;
+    }
+    this.stopTheme(0);
+    this.themeVolume = volume;
+    const audio = new Audio(src);
+    audio.dataset.src = src;
+    audio.loop = true;
+    audio.preload = 'auto';
+    audio.volume = 0;
+    this.theme = audio;
+    this.setSynthMusicMuted(true);
+    audio.play().then(() => {
+      this.fadeThemeTo(this.enabled ? volume : 0, 1400);
+    }).catch(() => {
+      // Autoplay can be blocked before a user gesture; synth ambience stays off
+      // only until the next explicit play attempt.
+      if (this.theme === audio) this.setSynthMusicMuted(false);
+    });
+  }
+
+  stopTheme(fadeMs = 1400): void {
+    const audio = this.theme;
+    this.setSynthMusicMuted(false);
+    if (!audio) return;
+    if (fadeMs <= 0) {
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+      if (this.theme === audio) this.theme = null;
+      return;
+    }
+    this.fadeThemeTo(0, fadeMs);
+    window.setTimeout(() => {
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+      if (this.theme === audio) this.theme = null;
+    }, fadeMs + 80);
+  }
+
+  private setSynthMusicMuted(muted: boolean): void {
+    this.synthMusicMuted = muted;
+    if (!this.ctx) return;
+    const cfg = MOODS[this.mood];
+    const now = this.ctx.currentTime;
+    this.padGain?.gain.setTargetAtTime(muted ? 0.0001 : cfg.gain, now, 0.5);
+    this.scoreGain?.gain.setTargetAtTime(muted ? 0.0001 : cfg.gain * 0.55, now, 0.5);
+  }
+
+  private fadeThemeTo(target: number, duration: number): void {
+    if (!this.theme) return;
+    if (this.themeFadeTimer) window.clearTimeout(this.themeFadeTimer);
+    const audio = this.theme;
+    const start = audio.volume;
+    const started = performance.now();
+    const tick = () => {
+      if (this.theme !== audio) return;
+      const k = Math.min(1, (performance.now() - started) / Math.max(1, duration));
+      audio.volume = THREE_CLAMP(start + (target - start) * k, 0, 1);
+      if (k < 1) {
+        this.themeFadeTimer = window.setTimeout(tick, 40);
+      }
+    };
+    tick();
   }
 
   toggle(): boolean {
@@ -351,6 +430,9 @@ export class Soundtrack {
 
   dispose(): void {
     if (this.melodyTimer) window.clearInterval(this.melodyTimer);
+    if (this.themeFadeTimer) window.clearTimeout(this.themeFadeTimer);
+    this.theme?.pause();
+    this.theme = null;
     try {
       this.noise?.stop();
       this.oscillators.forEach((o) => o.stop());

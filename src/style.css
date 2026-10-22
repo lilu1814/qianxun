@@ -2191,3 +2191,33 @@ button:focus-visible {
   font-size: 9px;
   color: rgba(218, 204, 180, 0.5);
 }
+
+/* During dialogue, the stage accepts drag-to-look but only the dialogue panel advances. */
+#stage canvas.dialogue-look {
+  cursor: grab;
+}
+#stage canvas.dialogue-look.dragging {
+  cursor: grabbing;
+}
+.dialogue {
+  cursor: pointer;
+}
+
+/* Hide the system cursor during the playable chapters; UI buttons keep theirs. */
+#stage.hide-cursor canvas,
+#stage.hide-cursor .dialogue {
+  cursor: none !important;
+}
+
+/* The game is mouse-look driven: no system pointer over the scene or HUD. */
+body.hide-cursor,
+body.hide-cursor * {
+  cursor: none !important;
+}
+/* Keep a usable pointer inside the journal / chapter-select overlays. */
+body.hide-cursor #journal:not(.hidden),
+body.hide-cursor #journal:not(.hidden) *,
+body.hide-cursor #chapter-select:not(.hidden),
+body.hide-cursor #chapter-select:not(.hidden) * {
+  cursor: auto !important;
+}

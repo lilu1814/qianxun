@@ -119,6 +119,7 @@ async function boot(): Promise<void> {
   }
   try {
     chapter = new ChapterOne3D(canvas);
+    if (params.get('outfit') === 'work') chapter.setOutfit('work');
     window.__QIANXUN_CHAPTER__ = chapter;
   } catch (error) {
     showLoadError(error);
@@ -149,6 +150,15 @@ async function boot(): Promise<void> {
   wire();
   if (save?.completed) setButtonText(startBtn, '第一章をもう一度', '重温第一章');
 
+  const directScene = params.get('scene');
+  if (directScene === 'town' || directScene === 'market') {
+    started = true;
+    titleScreen.classList.add('hidden');
+    chapter.audio.init();
+    chapter.enterMarketScene();
+    return;
+  }
+
   const autoplay = params.get('autoplay');
   if (autoplay === '1' || autoplay === '2') {
     titleScreen.classList.add('hidden');
@@ -166,7 +176,7 @@ function setupMenu(): void {
   setButtonText(startBtn, save?.completed ? '第一章をもう一度' : 'トンネルへ', save?.completed ? '重温第一章' : '走入隧道');
   helpList.innerHTML = '';
   const helps = [
-    { key: 'A / D', label: '左旋回 / 右旋回', detail: '左右の矢印キーでも旋回できます。カメラは千尋の後ろを追います。', labelZh: '左转 / 右转', detailZh: '左右方向键也可以转向。镜头会跟在千寻身后。' },
+    { key: 'A / D', label: '左右移動', detail: 'A / D で左右に歩きます。カメラは回りません。W / S は前後、マウスで視点を動かします。', labelZh: '左右移动', detailZh: 'A / D 左右行走，镜头不会转动；W / S 前进后退，鼠标控制视角。' },
     { key: 'W / S', label: '前進 / 後退', detail: 'Shiftを押すと速く歩けます。マウスで見回し、ホイールでズーム。', labelZh: '前进 / 后退', detailZh: '按住 Shift 可以快走。移动鼠标环顾四周，滚轮缩放。' },
     { key: 'マウス / スペース', label: '視点 / 会話', detail: '画面をクリックしてマウスを固定。マウスで視点、Escで解除。ホイールでズーム、スペースで会話を進めます。', labelZh: '视角 / 对话', detailZh: '点击画面锁定鼠标，移动鼠标调整视角，Esc 释放；滚轮缩放，空格推进对话。' },
   ];
@@ -281,6 +291,8 @@ async function startJourney(chapterNumber: 1 | 2 = 1): Promise<void> {
   chapter.onComplete = handleComplete;
   chapter.ui.setActive(true);
   chapter.ui.showHud(true);
+  chapter.audio.init();
+  if (chapterNumber === 1) chapter.audio.playTheme('/audio/that_summer.mp3', 0.6);
   titleScreen.classList.add('leaving');
   await wait(550);
   titleScreen.classList.add('hidden');
@@ -326,13 +338,13 @@ function handleComplete(): void {
       setButtonText(replayBtn, '第二章をもう一度', '再走一遍第二章');
       nextChapterBtn.classList.add('hidden');
     } else {
-      kicker.textContent = 'CHAPTER ONE · THE TUNNEL';
-      title.textContent = '灯';
-      titleZh.textContent = '灯火';
-      quote.textContent = '「振り返ったとき、両親はいなかった。」';
-      quoteZh.textContent = '“她回过头时，父母已经不见了。”';
-      copy.innerHTML = '<p>旧市街の灯が一つ、また一つとともる。ベンチには、服を着た二頭の豚が、夕闇の中で夢中で食べているだけだった。</p><p>千尋の神隠しは、まだ始まったばかり。</p>';
-      copyZh.innerHTML = '<p>旧市街的灯一盏一盏亮起。长椅上，只剩两头穿着衣服的猪，在暮色里埋头进食。</p><p>属于千寻的神隐，才刚刚开始。</p>';
+      kicker.textContent = 'CHAPTER ONE · THE BRIDGE';
+      title.textContent = '橋';
+      titleZh.textContent = '桥';
+      quote.textContent = '「橋を渡るときは、息を止めろ。」';
+      quoteZh.textContent = '“过桥的时候，屏住呼吸。”';
+      copy.innerHTML = '<p>市場を抜け、長い石段を上った先に、白龍が待っていた。千尋は息を止め、湯屋へ続く橋を渡る。</p><p>神隠しの世界へ、一歩踏み入れた。</p>';
+      copyZh.innerHTML = '<p>穿过集市，走上长长的石阶，白龙正在尽头等候。千寻屏住呼吸，踏上通往汤屋的长桥。</p><p>她终于一步踏入了神隐的世界。</p>';
       credits.innerHTML = '<p>第一章 · 完　｜　次章「契約」</p><p>同人インタラクティブ作品 · 3Dシーン／プログラム制作 · 非営利</p>';
       creditsZh.innerHTML = '<p>第一章 · 完　｜　下一章「契约」</p><p>同人互动作品 · 3D 场景与程序绘制 · 非商业用途</p>';
       setButtonText(replayBtn, '第一章をもう一度', '再走一遍第一章');
@@ -378,6 +390,12 @@ function openJournal(): void {
       <span class="jc-state">${ch2State}<span class="jc-state-zh">${ch2StateZh}</span></span>
     </button>
   `;
+  journalChapters.querySelectorAll<HTMLButtonElement>('.journal-chapter').forEach((button, index) => {
+    button.addEventListener('click', () => {
+      if (button.disabled) return;
+      location.href = `${location.pathname}?autoplay=${index + 1}`;
+    });
+  });
   journalMemories.innerHTML = '';
   const memories = [...chapter.memories];
   if (save?.completed && !memories.includes('旧市街の夕暮れ、両親は豚になった。')) {

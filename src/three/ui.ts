@@ -72,6 +72,7 @@ export class StoryUI {
 
   constructor() {
     this.dialogueEl.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
       event.stopPropagation();
       this.advance();
     });
