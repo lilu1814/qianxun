@@ -358,7 +358,7 @@ async function startJourney(chapterNumber: 1 | 2 = 1): Promise<void> {
   chapter.ui.setActive(true);
   chapter.ui.showHud(true);
   chapter.audio.init();
-  if (chapterNumber === 1) chapter.audio.playTheme('/audio/that_summer.mp3', 0.6);
+  if (chapterNumber === 1) chapter.audio.playTheme('audio/that_summer.mp3', 0.6);
   titleScreen.classList.add('leaving');
   await wait(550);
   titleScreen.classList.add('hidden');

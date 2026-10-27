@@ -315,7 +315,7 @@ export function createChihiroModel(options: ChihiroModelOptions = {}): ChihiroMo
   // Facial texture decal. The reference sheet's face is drawn in 2D, so it is
   // mapped onto a very shallow curved plane just proud of the skull. The old
   // primitive eyes/nose/mouth stay in the hierarchy (named) but are hidden.
-  const faceTexture = new THREE.TextureLoader().load('/images/chihiro_face.png');
+  const faceTexture = new THREE.TextureLoader().load('images/chihiro_face.png');
   faceTexture.colorSpace = THREE.SRGBColorSpace;
   faceTexture.anisotropy = 4;
   const faceGeometry = new THREE.PlaneGeometry(0.255, 0.204, 16, 16);

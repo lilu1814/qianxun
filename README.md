@@ -1,4 +1,4 @@
-> **[GitHub Pages 预览主页](https://lilu1814.github.io/qianxun/)** · [查看仓库源码](https://github.com/lilu1814/qianxun)
+> **[在线试玩](https://lilu1814.github.io/qianxun/play/)** · [预览主页](https://lilu1814.github.io/qianxun/) · [查看仓库源码](https://github.com/lilu1814/qianxun)
 
 # 神隠し · 千と千尋の神隠し 3D
 

@@ -360,9 +360,9 @@ export class ChapterOne3D {
     return new Promise((resolve, reject) => {
       const loader = new GLTFLoader();
       const dracoLoader = new DRACOLoader();
-      dracoLoader.setDecoderPath('/draco/');
+      dracoLoader.setDecoderPath('draco/');
       loader.setDRACOLoader(dracoLoader);
-      const modelUrl = this.outfit === 'work' ? '/models/chihiro_work.glb' : '/models/chihiro_compact.glb';
+      const modelUrl = this.outfit === 'work' ? 'models/chihiro_work.glb' : 'models/chihiro_compact.glb';
       const fallbackTotal = this.outfit === 'work' ? 811668 : 3225212;
       loader.load(
         modelUrl,
@@ -445,7 +445,7 @@ export class ChapterOne3D {
     return new Promise((resolve) => {
       const loader = new GLTFLoader();
       loader.load(
-        '/models/haku.glb',
+        'models/haku.glb',
         (gltf) => {
           const model = gltf.scene;
           model.traverse((object) => {
@@ -599,7 +599,7 @@ export class ChapterOne3D {
   private loadDad(): Promise<void> {
     return new Promise((resolve) => {
       const loader = new GLTFLoader();
-      loader.load('/models/dad.glb?v=6', (gltf) => {
+      loader.load('models/dad.glb?v=6', (gltf) => {
         const source = gltf.scene;
         const makeDad = (): THREE.Object3D => {
           const model = cloneSkeleton(source);
@@ -708,7 +708,7 @@ export class ChapterOne3D {
   private loadMom(): Promise<void> {
     return new Promise((resolve) => {
       const loader = new GLTFLoader();
-      loader.load('/models/mom.glb?v=5', (gltf) => {
+      loader.load('models/mom.glb?v=5', (gltf) => {
         const source = gltf.scene;
         const makeMom = (): THREE.Object3D => {
           const model = cloneSkeleton(source);
@@ -856,7 +856,7 @@ export class ChapterOne3D {
     return new Promise((resolve) => {
       const loader = new GLTFLoader();
       loader.load(
-        '/models/kamaji.glb',
+        'models/kamaji.glb',
         (gltf) => {
           const model = gltf.scene;
           model.traverse((object) => {
@@ -914,7 +914,7 @@ export class ChapterOne3D {
     return new Promise((resolve) => {
       const loader = new GLTFLoader();
       loader.load(
-        '/models/lin.glb',
+        'models/lin.glb',
         (gltf) => {
           const model = gltf.scene;
           model.traverse((object) => {
@@ -973,7 +973,7 @@ export class ChapterOne3D {
     return new Promise((resolve) => {
       const loader = new GLTFLoader();
       loader.load(
-        '/models/yubaba.glb',
+        'models/yubaba.glb',
         (gltf) => {
           const model = gltf.scene;
           model.traverse((object) => {
@@ -1056,7 +1056,7 @@ export class ChapterOne3D {
     this.ui.setActive(true);
     this.ui.showHud(true);
     this.audio.init();
-    this.audio.playTheme('/audio/that_summer.mp3', 0.6);
+    this.audio.playTheme('audio/that_summer.mp3', 0.6);
     this.audio.setMood('day');
     this.setWorld('field');
     this.player.position.copy(this.field.playerStart);
@@ -1318,7 +1318,7 @@ export class ChapterOne3D {
       this.town.humanParents.forEach((human) => { human.visible = false; });
       this.town.pigs.forEach((pig) => { pig.visible = false; });
       this.bathhouse.haku.visible = true;
-      this.audio.playTheme('/audio/nobody_diner.mp3', 0.38);
+      this.audio.playTheme('audio/nobody_diner.mp3', 0.38);
       this.audio.setMood('night');
       this.ui.setObjective('', false);
       this.cutscene = true;
@@ -1337,7 +1337,7 @@ export class ChapterOne3D {
 
   private async enterTown(): Promise<void> {
     // From the market scene through the bridge and the end of Chapter One.
-    this.audio.playTheme('/audio/nobody_diner.mp3', 0.5);
+    this.audio.playTheme('audio/nobody_diner.mp3', 0.5);
     this.setWorld('town');
     this.townTime = 0;
     this.townNight = false;
@@ -1419,7 +1419,7 @@ export class ChapterOne3D {
     this.ui.setActive(true);
     this.ui.showHud(true);
     this.audio.init();
-    this.audio.playTheme('/audio/nobody_diner.mp3', 0.5);
+    this.audio.playTheme('audio/nobody_diner.mp3', 0.5);
     this.audio.setMood('day');
     this.setWorld('town');
     this.townTime = 0.18;
@@ -1612,7 +1612,7 @@ export class ChapterOne3D {
 
   private async enterBoiler(): Promise<void> {
     this.setWorld('bathhouse');
-    this.audio.playTheme('/audio/boiler_bug.mp3', 0.45);
+    this.audio.playTheme('audio/boiler_bug.mp3', 0.45);
     this.bathStage = 'boiler';
     this.bathhouse.setStage('boiler');
     this.bathhouse.lin.visible = false;

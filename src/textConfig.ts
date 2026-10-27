@@ -74,7 +74,7 @@ function index(): void {
 
 export async function loadTextConfig(): Promise<void> {
   try {
-    const response = await fetch('/config/text.json', { cache: 'no-store' });
+    const response = await fetch('config/text.json', { cache: 'no-store' });
     if (!response.ok) throw new Error(`text config ${response.status}`);
     config = (await response.json()) as TextConfig;
   } catch (error) {

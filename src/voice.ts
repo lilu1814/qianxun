@@ -77,7 +77,7 @@ export class VoiceOver {
     this.stopSourceImmediate();
 
     const key = `${speaker}|${text}`;
-    const buffer = await this.load(`/voice/${VOICE_HASH(key)}.mp3`, ctx);
+    const buffer = await this.load(`voice/${VOICE_HASH(key)}.mp3`, ctx);
     if (!buffer || token !== this.playToken || !this.enabled) return;
 
     const source = ctx.createBufferSource();

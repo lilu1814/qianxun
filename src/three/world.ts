@@ -1054,7 +1054,7 @@ function createField(): {
   group.add(gate.group);
 
   // one guardian statue beside the tunnel mouth, before entering the tunnel
-  const tunnelStatueTexture = new THREE.TextureLoader().load('/images/meadow_statue.png');
+  const tunnelStatueTexture = new THREE.TextureLoader().load('images/meadow_statue.png');
   tunnelStatueTexture.colorSpace = THREE.SRGBColorSpace;
   const tunnelStatue = new THREE.Sprite(new THREE.SpriteMaterial({
     map: tunnelStatueTexture,
@@ -2909,7 +2909,7 @@ function createThreeHeads(): THREE.Group {
   const trim = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.045, 0.95), gold);
   trim.position.y = -0.11;
   group.add(trim);
-  const texture = new THREE.TextureLoader().load('/images/oni_head_final.png', (tex) => {
+  const texture = new THREE.TextureLoader().load('images/oni_head_final.png', (tex) => {
     const image = tex.image as HTMLImageElement;
     const w = image.width, h = image.height;
     const canvas = document.createElement('canvas');
@@ -4103,7 +4103,7 @@ export function buildBathhouseWorld(): BathhouseWorld {
   officeRoom.add(boh);
   // Boh stays in his normal state; the crying texture is no longer used.
   boh.children.forEach((child) => { child.visible = false; });
-  const bohNormalTex = new THREE.TextureLoader().load('/images/boh_normal.png');
+  const bohNormalTex = new THREE.TextureLoader().load('images/boh_normal.png');
   bohNormalTex.colorSpace = THREE.SRGBColorSpace;
   const bohNormalMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(1, 1),
@@ -4464,7 +4464,7 @@ export function buildBathhouseWorld(): BathhouseWorld {
   boiler.add(kamaji);
   // The reference-art cutout replaces the procedural six-armed boiler man.
   kamaji.visible = false;
-  const kamajiTexture = new THREE.TextureLoader().load('/images/kamaji_cutout.png');
+  const kamajiTexture = new THREE.TextureLoader().load('images/kamaji_cutout.png');
   kamajiTexture.colorSpace = THREE.SRGBColorSpace;
   const kamajiCutout = new THREE.Sprite(
     new THREE.SpriteMaterial({
@@ -5211,7 +5211,7 @@ export function buildMeadowWorld(): MeadowWorld {
 
   // mossy stone heads, looking toward the path
   // The reference-art stone statue, used as a cutout on both sides of the path.
-  const statueTexture = new THREE.TextureLoader().load('/images/meadow_statue.png');
+  const statueTexture = new THREE.TextureLoader().load('images/meadow_statue.png');
   statueTexture.colorSpace = THREE.SRGBColorSpace;
   const statueMat = new THREE.SpriteMaterial({
     map: statueTexture,
