@@ -29,6 +29,7 @@ const titleScreen = document.getElementById('title-screen')!;
 const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
 const continueBtn = document.getElementById('continue-btn') as HTMLButtonElement;
 const helpBtn = document.getElementById('chapters-btn') as HTMLButtonElement;
+const chaptersLink = document.getElementById('chapters-link') as HTMLButtonElement;
 const debugBtn = document.getElementById('debug-btn') as HTMLButtonElement;
 const debugOverlay = document.getElementById('debug-menu')!;
 const debugGrid = document.getElementById('debug-grid')!;
@@ -163,6 +164,8 @@ async function boot(): Promise<void> {
     (params.get('menu') ?? params.get('levels') ?? params.get('select') ?? '').toLowerCase(),
   );
   debugBtn.classList.toggle('hidden', !levelMenuRequested);
+  // Keep a visible entry on the title page; the menu itself remains query-driven.
+  chaptersLink.classList.toggle('hidden', levelMenuRequested);
   if (levelMenuRequested) {
     debugOverlay.classList.remove('hidden');
     return;
@@ -254,6 +257,12 @@ function wire(): void {
     location.href = `${location.pathname}?autoplay=2`;
   });
   window.addEventListener('qianxun:name-card', () => chapter?.audio.play('stamp'));
+
+  chaptersLink.addEventListener('click', () => {
+    chapter?.audio.init();
+    chapter?.audio.play('page');
+    location.href = `${location.pathname}?menu=1`;
+  });
 
   helpBtn.addEventListener('click', () => {
     chapter?.audio.play('page');
