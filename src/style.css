@@ -1457,6 +1457,8 @@ button:focus-visible {
   letter-spacing: 0.08em;
 }
 
+.controls-hint small { display: block; margin-top: 2px; color: rgba(192,183,167,.38); font-size: .78em; letter-spacing: .04em; }
+
 .controls-dot {
   width: 2px;
   height: 2px;
@@ -1572,7 +1574,7 @@ button:focus-visible {
 }
 
 .help-list {
-  grid-template-columns: repeat(3, 1fr) !important;
+  grid-template-columns: repeat(2, 1fr) !important;
 }
 
 .help-card {

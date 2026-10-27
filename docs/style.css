@@ -92,6 +92,8 @@ h2 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: clamp(34
 .intro-copy { padding-top: 10px; }
 .intro-copy p { margin: 0 0 18px; color: #aeb9af; font-size: 13px; line-height: 2.1; }
 .intro-copy .small { color: var(--dim); font-size: 10px; line-height: 1.9; }
+.dev-status { margin-top: 24px !important; padding: 10px 12px; border-left: 2px solid rgba(197,169,107,.55); background: rgba(197,169,107,.05); color: #c3b58f !important; font-size: 10px !important; letter-spacing: .04em; }
+.dev-status span { color: var(--gold); font-size: 8px; letter-spacing: .16em; margin-right: 6px; }
 .rule { width: 100%; height: 1px; background: var(--line); margin: 28px 0; }
 
 .journey { background: #0a1612; }

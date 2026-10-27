@@ -157,6 +157,17 @@ async function boot(): Promise<void> {
   wire();
   if (save?.completed) setButtonText(startBtn, '第一章をもう一度', '重温第一章');
 
+  // The scene selector is intentionally hidden from the normal title menu.
+  // Add ?menu=1 (or ?levels=1 / ?select=1) to expose and open it.
+  const levelMenuRequested = ['1', 'true', 'scenes', 'levels', 'debug'].includes(
+    (params.get('menu') ?? params.get('levels') ?? params.get('select') ?? '').toLowerCase(),
+  );
+  debugBtn.classList.toggle('hidden', !levelMenuRequested);
+  if (levelMenuRequested) {
+    debugOverlay.classList.remove('hidden');
+    return;
+  }
+
   const directScene = params.get('scene');
   if (directScene === 'town' || directScene === 'market') {
     started = true;
@@ -183,9 +194,10 @@ function setupMenu(): void {
   setButtonText(startBtn, save?.completed ? '第一章をもう一度' : 'トンネルへ', save?.completed ? '重温第一章' : '走入隧道');
   helpList.innerHTML = '';
   const helps = [
-    { key: 'A / D', label: '左右移動', detail: 'A / D で左右に歩きます。カメラは回りません。W / S は前後、マウスで視点を動かします。', labelZh: '左右移动', detailZh: 'A / D 左右行走，镜头不会转动；W / S 前进后退，鼠标控制视角。' },
-    { key: 'W / S', label: '前進 / 後退', detail: 'Shiftを押すと速く歩けます。マウスで見回し、ホイールでズーム。', labelZh: '前进 / 后退', detailZh: '按住 Shift 可以快走。移动鼠标环顾四周，滚轮缩放。' },
-    { key: 'マウス / スペース', label: '視点 / 会話', detail: '画面をクリックしてマウスを固定。マウスで視点、Escで解除。ホイールでズーム、スペースで会話を進めます。', labelZh: '视角 / 对话', detailZh: '点击画面锁定鼠标，移动鼠标调整视角，Esc 释放；滚轮缩放，空格推进对话。' },
+    { key: 'W / A / S / D', label: '移動', detail: 'A / D で左右、W / S で前後に歩きます。Shiftを押すと速く歩けます。', labelZh: '移动', detailZh: 'A / D 左右移动，W / S 前进 / 后退。按住 Shift 可以快走。' },
+    { key: 'マウス', label: '視点', detail: '画面をクリックしてマウスを固定。マウスで視点、Escで解除。ホイールでズーム。', labelZh: '视角', detailZh: '点击画面锁定鼠标，移动鼠标调整视角，Esc 释放；滚轮缩放。' },
+    { key: 'E', label: '人物と交流', detail: '人物や調べられる物の近くでEを押します。長い橋では、Eを押したまま息を止めます。', labelZh: '人物交互', detailZh: '靠近人物或可调查的物体时按 E。汤屋长桥上按住 E 屏住呼吸。' },
+    { key: 'スペース', label: '会話を進める', detail: '対話中にスペースを押すと、次の台詞へ進みます。', labelZh: '推进剧情对话', detailZh: '剧情对话中按空格键，进入下一句台词。' },
   ];
   helps.forEach((help) => {
     const card = document.createElement('div');
