@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07110e">
+  <title>神隠し · 千与千寻 3D 互动叙事</title>
+  <meta name="description" content="非商业同人 3D 互动叙事：第一章「隧道」、第二章「契约」。Three.js 场景、日语对白与中文字幕、可动千寻模型。">
+  <meta property="og:title" content="神隠し · 千与千寻 3D 互动叙事">
+  <meta property="og:description" content="从旧门楼到汤屋：两章 Three.js 互动旅程与可定制千寻模型。">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://lilu1814.github.io/qianxun/assets/og.webp">
+  <link rel="canonical" href="https://lilu1814.github.io/qianxun/">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="nav">
+    <a class="brand" href="#top" aria-label="神隠し 首页">
+      <span class="brand-seal">千</span>
+      <span class="brand-copy"><b>神隠し</b><small>SPIRITED AWAY · 3D</small></span>
+    </a>
+    <nav class="nav-links" aria-label="页面导航">
+      <a href="#journey">旅程</a>
+      <a href="#scenes">场景</a>
+      <a href="#model">千寻模型</a>
+      <a href="#play">运行</a>
+    </nav>
+    <a class="nav-github" href="https://github.com/lilu1814/qianxun" target="_blank" rel="noopener">GitHub <span>↗</span></a>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-image" aria-hidden="true">
+        <img src="assets/hero.webp" alt="">
+      </div>
+      <div class="hero-shade" aria-hidden="true"></div>
+      <div class="hero-copy">
+        <p class="eyebrow">A FAN-MADE INTERACTIVE JOURNEY</p>
+        <h1 id="hero-title">千と千尋の<br><em>神隠し</em></h1>
+        <p class="hero-zh">千与千寻 · 3D 互动叙事</p>
+        <p class="hero-lead">穿过旧门楼，走过无人的市集，在汤屋的长桥上屏住呼吸。<br>一个关于名字、记忆与归途的低多边形 3D 旅程。</p>
+        <div class="hero-actions">
+          <a class="button primary" href="https://github.com/lilu1814/qianxun" target="_blank" rel="noopener">查看 GitHub 仓库</a>
+          <a class="button ghost" href="#journey">进入旅程 ↓</a>
+        </div>
+      </div>
+      <div class="hero-foot">
+        <span><b>02</b> CHAPTERS</span>
+        <span><b>3D</b> THREE.JS</span>
+        <span><b>日 / 中</b> DIALOGUE</span>
+        <span class="hero-scroll">SCROLL TO EXPLORE</span>
+      </div>
+    </section>
+
+    <section class="intro section" data-reveal>
+      <div class="section-label">01 / PROLOGUE</div>
+      <div class="intro-grid">
+        <h2>地图之外，<br>风穿过古门。</h2>
+        <div class="intro-copy">
+          <p>十岁的千寻与父母误入一条地图上不存在的土路。旧门楼后是空无一人的市集、摆满食物的摊位，以及一座在暮色中亮起灯笼的汤屋。</p>
+          <p>父母变成了猪。名字即将被夺走。她必须找到锅炉爷爷，找到工作，也找到回去的路。</p>
+          <div class="rule"></div>
+          <p class="small">非官方、非商业的同人作品。原作、影像与角色版权归各自权利人所有。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="journey" class="journey section">
+      <div class="section-head" data-reveal>
+        <div class="section-label">02 / THE JOURNEY</div>
+        <h2>两章旅程</h2>
+        <p>从白天的草地到夜晚的汤屋，每一章都有独立的场景、对白与目标。</p>
+      </div>
+      <div class="chapter-list">
+        <article class="chapter chapter-one" data-reveal>
+          <div class="chapter-image"><img src="assets/mountain.webp" alt="第一章草地与山路" loading="lazy"></div>
+          <div class="chapter-overlay"></div>
+          <div class="chapter-body">
+            <span class="chapter-no">CHAPTER 01</span>
+            <h3>隧道 <small>トンネル</small></h3>
+            <p>旧门楼、风中的草原、横穿草地的小溪、无人的旧市集。石段上，白龙第一次说出名字的代价。</p>
+            <div class="tags"><span>草地公路</span><span>草原小溪</span><span>旧市集</span><span>石段</span></div>
+          </div>
+        </article>
+        <article class="chapter chapter-two" data-reveal>
+          <div class="chapter-image"><img src="assets/market.webp" alt="第一章旧市集与父母" loading="lazy"></div>
+          <div class="chapter-overlay"></div>
+          <div class="chapter-body">
+            <span class="chapter-no">CHAPTER 02</span>
+            <h3>契约 <small>契約</small></h3>
+            <p>白龙在桥边等候。屏住呼吸过桥，穿过锅炉房与运煤的煤球精灵，最后站到汤婆婆的桌前。</p>
+            <div class="tags"><span>汤屋长桥</span><span>锅炉房</span><span>小玲</span><span>汤婆婆</span></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="scenes" class="scenes section">
+      <div class="section-head" data-reveal>
+        <div class="section-label">03 / SCENES</div>
+        <h2>场景切片</h2>
+        <p>低多边形的体积、黄昏的光、黑布幽灵与一碗碗还没有人动过的饭。</p>
+      </div>
+      <div class="gallery">
+        <figure class="shot wide" data-reveal>
+          <img src="assets/meadow.webp" alt="草原与远处村落" loading="lazy">
+          <figcaption><span>草原</span><small>草地的尽头与小溪</small></figcaption>
+        </figure>
+        <figure class="shot" data-reveal>
+          <img src="assets/ghosts.webp" alt="夜里的黑布双眼幽灵" loading="lazy">
+          <figcaption><span>夜灵</span><small>黑布与两只眼睛</small></figcaption>
+        </figure>
+        <figure class="shot" data-reveal>
+          <img src="assets/lin.webp" alt="锅炉房中的小玲" loading="lazy">
+          <figcaption><span>锅炉房</span><small>小玲与运煤的煤球</small></figcaption>
+        </figure>
+        <figure class="shot wide" data-reveal>
+          <img src="assets/pause.webp" alt="游戏暂停菜单" loading="lazy">
+          <figcaption><span>暂停</span><small>继续，或回到主页面</small></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="model" class="model-section section">
+      <div class="model-media" data-reveal>
+        <img src="assets/model.webp" alt="Three.js 千寻可动角色模型" loading="lazy">
+        <div class="model-badge">THREE.JS · RIGGED CHARACTER</div>
+      </div>
+      <div class="model-copy" data-reveal>
+        <div class="section-label">04 / CHIHIRO MODEL</div>
+        <h2>把千寻<br>做成可动的。</h2>
+        <p>独立的程序化角色模型：棕色侧马尾、绿白条纹上衣、橙色短裤、白袜与黄褐色鞋。面部使用参考图贴图，身体由可摆动的关节层级构成。</p>
+        <ul class="model-list">
+          <li><span>01</span>待机 / 行走 / 奔跑 / 跳跃</li>
+          <li><span>02</span>步频、步幅、摆臂实时调节</li>
+          <li><span>03</span>跳跃高度与时长可定制</li>
+          <li><span>04</span>所有关节通过 <code>chihiro.joints</code> 暴露</li>
+        </ul>
+        <div class="model-actions">
+          <a class="text-link" href="https://github.com/lilu1814/qianxun/blob/main/src/chihiro/chihiroModel.ts" target="_blank" rel="noopener">查看模型代码 ↗</a>
+          <a class="text-link muted" href="https://github.com/lilu1814/qianxun/blob/main/docs/chihiro-model.md" target="_blank" rel="noopener">使用说明 ↗</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="play" class="play section" data-reveal>
+      <div class="play-copy">
+        <div class="section-label">05 / RUN LOCALLY</div>
+        <h2>在自己的机器上<br>打开这扇门。</h2>
+        <p>项目使用 Vite + TypeScript + Three.js。无需后端；模型、场景和音频都从本地静态资源加载。</p>
+        <div class="stack"><span>Three.js</span><span>TypeScript</span><span>Vite</span><span>Blender</span><span>glTF</span></div>
+      </div>
+      <div class="terminal" aria-label="运行命令">
+        <div class="terminal-bar"><i></i><i></i><i></i><span>terminal</span></div>
+        <pre><code><span class="prompt">$</span> git clone https://github.com/lilu1814/qianxun.git
+<span class="prompt">$</span> cd qianxun
+<span class="prompt">$</span> pnpm install
+<span class="prompt">$</span> pnpm dev
+
+<span class="comment"># open http://127.0.0.1:4173/</span>
+<span class="comment"># character demo: /chihiro-model.html</span></code></pre>
+      </div>
+    </section>
+
+    <section class="closing section" data-reveal>
+      <p class="closing-jp">自分の名前を忘れないで。</p>
+      <p class="closing-zh">不要忘记自己的名字。</p>
+      <a class="button primary" href="https://github.com/lilu1814/qianxun" target="_blank" rel="noopener">进入 GitHub 仓库</a>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-brand"><span class="brand-seal small">千</span><b>神隠し · 3D</b></div>
+    <p>非公式ファンメイド作品 / 非官方同人作品。原作「千と千尋の神隠し」及角色版权归 Studio Ghibli 与各自权利人所有。</p>
+    <div class="footer-links">
+      <a href="https://github.com/lilu1814/qianxun" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/lilu1814/qianxun/issues" target="_blank" rel="noopener">Issues</a>
+      <span>© 2026 · Fan project</span>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

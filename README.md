@@ -1,3 +1,5 @@
+> **[GitHub Pages 预览主页](https://lilu1814.github.io/qianxun/)** · [查看仓库源码](https://github.com/lilu1814/qianxun)
+
 # 神隠し · 千と千尋の神隠し 3D
 
 『千と千尋の神隠し』を題材にした、非商業の同人 3D インタラクティブストーリー。
