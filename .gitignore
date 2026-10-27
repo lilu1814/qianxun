@@ -16,3 +16,15 @@ blender/source/
 
 # local capture/temp files
 screenshots/*.tmp.png
+
+# local preview captures
+screenshots/*.png
+
+# voice audition pages / samples (not used by the game)
+public/voice-samples/
+public/chihiro-voices.html
+public/chihiro-engines.html
+scripts/generate_chapter1_voice.py
+
+# generated voice clips (character voice is temporarily disabled)
+public/voice/*.mp3

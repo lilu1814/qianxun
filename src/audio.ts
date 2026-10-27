@@ -37,6 +37,9 @@ export class Soundtrack {
   private noise: AudioBufferSourceNode | null = null;
   private theme: HTMLAudioElement | null = null;
   private themeFadeTimer: number | null = null;
+  private creekGain: GainNode | null = null;
+  private creekSource: AudioBufferSourceNode | null = null;
+  private creekLfo: OscillatorNode | null = null;
   private themeVolume = 0.5;
   private synthMusicMuted = false;
   enabled = true;
@@ -237,6 +240,70 @@ export class Soundtrack {
     this.scheduleMelody();
   }
 
+  /** Looping filtered-noise brook, positioned in the mix near the creek. */
+  startCreek(): void {
+    if (!this.ctx || !this.master || this.creekSource) return;
+    const ctx = this.ctx;
+    const length = Math.floor(ctx.sampleRate * 3);
+    const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let brown = 0;
+    for (let i = 0; i < length; i++) {
+      const white = Math.random() * 2 - 1;
+      brown = brown * 0.985 + white * 0.015;
+      data[i] = brown * 3.2 + white * 0.16;
+    }
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    const band = ctx.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = 760;
+    band.Q.value = 0.55;
+    const low = ctx.createBiquadFilter();
+    low.type = 'lowpass';
+    low.frequency.value = 2100;
+    low.Q.value = 0.35;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.0001;
+    source.connect(band);
+    band.connect(low);
+    low.connect(gain);
+    gain.connect(this.master);
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 0.43;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 0.008;
+    lfo.connect(lfoGain);
+    lfoGain.connect(gain.gain);
+    source.start();
+    lfo.start();
+    this.creekGain = gain;
+    this.creekSource = source;
+    this.creekLfo = lfo;
+  }
+
+  setCreek(amount: number): void {
+    if (!this.ctx || !this.creekGain) return;
+    const target = Math.max(0.0001, THREE_CLAMP(amount, 0, 1) * 0.07);
+    this.creekGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.3);
+  }
+
+  stopCreek(): void {
+    const source = this.creekSource;
+    const lfo = this.creekLfo;
+    this.creekSource = null;
+    this.creekLfo = null;
+    this.creekGain = null;
+    try {
+      source?.stop();
+      lfo?.stop();
+    } catch {
+      // already stopped
+    }
+  }
+
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
     if (!this.ctx || !this.master) return;
@@ -433,6 +500,7 @@ export class Soundtrack {
     if (this.themeFadeTimer) window.clearTimeout(this.themeFadeTimer);
     this.theme?.pause();
     this.theme = null;
+    this.stopCreek();
     try {
       this.noise?.stop();
       this.oscillators.forEach((o) => o.stop());

@@ -2221,3 +2221,109 @@ body.hide-cursor #chapter-select:not(.hidden),
 body.hide-cursor #chapter-select:not(.hidden) * {
   cursor: auto !important;
 }
+
+/* Homepage scene-preview entry (development aid). */
+.debug-entry {
+  border-color: rgba(116, 170, 150, 0.24);
+  background: linear-gradient(90deg, rgba(8, 20, 17, 0.72), rgba(8, 20, 17, 0.2));
+}
+.debug-entry span { color: rgba(184, 215, 196, 0.86); }
+.debug-entry i { color: rgba(151, 183, 166, 0.62); }
+.debug-menu { z-index: 95; }
+.debug-panel { width: min(940px, 94vw); max-height: 88vh; overflow-y: auto; }
+.debug-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 22px;
+}
+.debug-scene {
+  display: flex;
+  text-decoration: none;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 15px 17px;
+  border: 1px solid rgba(176, 202, 186, 0.17);
+  background: rgba(12, 23, 20, 0.72);
+  color: rgba(234, 228, 211, 0.9);
+  text-align: left;
+  transition: border-color .22s, background .22s, transform .22s;
+}
+.debug-scene:hover {
+  border-color: rgba(203, 178, 111, 0.5);
+  background: rgba(26, 41, 34, 0.86);
+  transform: translateY(-1px);
+}
+.debug-scene b { font-size: 14px; font-weight: 500; letter-spacing: .04em; }
+.debug-scene small { font-family: var(--sans); color: rgba(176, 193, 181, 0.6); font-size: 11px; letter-spacing: .04em; }
+.debug-panel .journal-heading h2 { color: rgba(218, 226, 211, 0.92); }
+@media (max-width: 640px) {
+  .debug-grid { grid-template-columns: 1fr; }
+  .debug-panel { width: 94vw; padding: 22px 18px; }
+}
+
+/* In-game pause menu (Esc). */
+.pause-menu {
+  position: absolute;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(3, 8, 7, 0.68);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+}
+.pause-panel {
+  width: min(420px, 90vw);
+  padding: 38px 38px 32px;
+  border: 1px solid rgba(225, 185, 120, 0.32);
+  background:
+    linear-gradient(145deg, rgba(16, 30, 25, 0.98), rgba(7, 13, 12, 0.98)),
+    radial-gradient(circle at 20% 0%, rgba(183, 142, 77, 0.13), transparent 55%);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+}
+.pause-kicker {
+  display: block;
+  color: rgba(211, 174, 103, 0.64);
+  font-family: var(--sans);
+  font-size: 10px;
+  letter-spacing: 0.34em;
+}
+.pause-panel h2 {
+  margin: 14px 0 2px;
+  color: rgba(240, 230, 211, 0.94);
+  font-family: var(--kai);
+  font-size: clamp(30px, 4vw, 42px);
+  font-weight: 400;
+  letter-spacing: 0.12em;
+}
+.pause-title-zh {
+  color: rgba(194, 205, 195, 0.68);
+  font-size: 13px;
+  letter-spacing: 0.24em;
+}
+.pause-panel p {
+  margin: 24px 0 0;
+  color: rgba(208, 214, 202, 0.62);
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.9;
+  letter-spacing: 0.08em;
+}
+.pause-panel .pause-copy-zh {
+  margin-top: 5px;
+  color: rgba(157, 181, 168, 0.54);
+}
+.pause-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 28px;
+}
+.pause-actions .ink-btn { width: 100%; }
+body.hide-cursor #pause-menu:not(.hidden),
+body.hide-cursor #pause-menu:not(.hidden) * {
+  cursor: auto !important;
+}

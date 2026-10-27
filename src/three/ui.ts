@@ -3,7 +3,8 @@ import { ZH_SUBTITLES } from '../zhSubs';
 import { getDialogue, getMode, getUi } from '../textConfig';
 import { SPEAKER_ZH, UI_ZH } from '../uiZh';
 
-// Dialogue audio is intentionally off until every chapter has a final voice pass.
+// Chapter One has a complete four-character voice pass; Chapter Two is muted
+// here until its own cast has final voice files.
 const DIALOGUE_VOICE_ENABLED = false;
 
 export const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
@@ -60,6 +61,7 @@ export class StoryUI {
   private nameOld = byId<HTMLSpanElement>('name-old');
   private nameNew = byId<HTMLSpanElement>('name-new');
   private voice = new VoiceOver();
+  private voiceChapter: 1 | 2 = 1;
 
   private dialogue: DialogueState | null = null;
   private translationText = '';
@@ -177,7 +179,7 @@ export class StoryUI {
     const promise = new Promise<void>((resolve) => {
       this.dialogue = { full: primary, chars: 0, complete: false, resolve };
     });
-    if (DIALOGUE_VOICE_ENABLED && speaker && speaker !== 'ナレーション') this.voice.speak(line, speaker);
+    if (DIALOGUE_VOICE_ENABLED && this.voiceChapter === 1 && speaker && speaker !== 'ナレーション') this.voice.speak(line, speaker);
     await promise;
   }
 
@@ -238,6 +240,11 @@ export class StoryUI {
 
   setVoiceEnabled(enabled: boolean): void {
     this.voice.setEnabled(enabled);
+  }
+
+  setVoiceChapter(chapter: 1 | 2): void {
+    this.voiceChapter = chapter;
+    if (chapter !== 1) this.voice.stop();
   }
 
   primeVoice(): void {

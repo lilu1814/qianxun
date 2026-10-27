@@ -110,6 +110,7 @@
               <button id="start-btn" class="ink-btn primary"><span>トンネルへ</span><i>走入隧道</i></button>
               <button id="continue-btn" class="ink-btn hidden"><span>旅を続ける</span><i>继续旅程</i></button>
               <button id="chapters-btn" class="ink-btn"><span>遊び方</span><i>操作说明</i></button>
+              <button id="debug-btn" class="ink-btn debug-entry"><span>シーン预览</span><i>场景预览 · DEBUG</i></button>
             </nav>
             <div class="title-foot">
               <span>マウス 視点<small>鼠标 视角</small></span>
@@ -122,6 +123,44 @@
             </div>
           </div>
           <div class="title-vertical">千と千尋の神隠し</div>
+        </section>
+
+        <section id="debug-menu" class="journal debug-menu hidden" aria-label="シーン预览">
+          <div class="journal-panel debug-panel">
+            <button id="debug-close" class="close-btn" aria-label="閉じる">×</button>
+            <div class="journal-heading">
+              <span class="journal-kicker">SCENE PREVIEW · DEBUG</span>
+              <h2>シーン预览</h2>
+              <div class="heading-zh">场景预览</div>
+              <p>各シーンの開始地点へ飛び、そのまま剧情を再生します。</p>
+              <p class="heading-sub-zh">跳到各场景起点，并直接继续播放该段剧情。</p>
+            </div>
+            <div id="debug-grid" class="debug-grid">
+              <button class="debug-scene" data-scene="field"><b>第一章 · 草地开场</b><small>車・山路・古い門</small></button>
+              <button class="debug-scene" data-scene="tunnel"><b>第一章 · 隧道</b><small>トンネルを抜ける</small></button>
+              <button class="debug-scene" data-scene="meadow"><b>第一章 · 草原</b><small>石像・小川・遠い村</small></button>
+              <button class="debug-scene" data-scene="town"><b>第一章 · 旧市集</b><small>両親・屋台・変身</small></button>
+              <button class="debug-scene" data-scene="stairs"><b>第一章 · 石段と白龍</b><small>白龍との出会い</small></button>
+              <button class="debug-scene" data-scene="bridge"><b>第二章 · 橋</b><small>白龍と橋を渡る</small></button>
+              <button class="debug-scene" data-scene="boiler"><b>第二章 · ボイラー室</b><small>釜爺・スス・リン</small></button>
+              <button class="debug-scene" data-scene="office"><b>第二章 · 湯婆婆の部屋</b><small>契約・名前を奪われる</small></button>
+              <a class="debug-scene" href="/chihiro-model.html" target="_blank" rel="noopener"><b>千寻 · Three.js 角色模型</b><small>行走・奔跑・跳跃动作预览</small></a>
+            </div>
+          </div>
+        </section>
+
+        <section id="pause-menu" class="pause-menu hidden" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+          <div class="pause-panel">
+            <span class="pause-kicker">PAUSED</span>
+            <h2 id="pause-title">一時停止</h2>
+            <div class="pause-title-zh">暂停</div>
+            <p>ゲームの時間を止めています。<br>「続ける」でゲームに戻ります。</p>
+            <p class="pause-copy-zh">游戏已暂停。<br>选择“继续游戏”回到当前场景。</p>
+            <div class="pause-actions">
+              <button id="pause-resume" class="ink-btn primary" type="button"><span>続ける</span><i>继续游戏</i></button>
+              <button id="pause-home" class="ink-btn" type="button"><span>タイトルへ</span><i>返回主页面</i></button>
+            </div>
+          </div>
         </section>
 
         <section id="journal" class="journal hidden" aria-label="旅の手記">

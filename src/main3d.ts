@@ -29,6 +29,13 @@ const titleScreen = document.getElementById('title-screen')!;
 const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
 const continueBtn = document.getElementById('continue-btn') as HTMLButtonElement;
 const helpBtn = document.getElementById('chapters-btn') as HTMLButtonElement;
+const debugBtn = document.getElementById('debug-btn') as HTMLButtonElement;
+const debugOverlay = document.getElementById('debug-menu')!;
+const debugGrid = document.getElementById('debug-grid')!;
+const debugClose = document.getElementById('debug-close') as HTMLButtonElement;
+const pauseMenu = document.getElementById('pause-menu')!;
+const pauseResume = document.getElementById('pause-resume') as HTMLButtonElement;
+const pauseHome = document.getElementById('pause-home') as HTMLButtonElement;
 const helpOverlay = document.getElementById('chapter-select')!;
 const helpClose = document.getElementById('chapter-select-close')!;
 const helpList = document.getElementById('chapter-list')!;
@@ -188,6 +195,20 @@ function setupMenu(): void {
   });
 }
 
+function openPauseMenu(): void {
+  if (!chapter || !started) return;
+  if (!titleScreen.classList.contains('hidden')) return;
+  if (!ending.classList.contains('hidden')) return;
+  document.exitPointerLock?.();
+  chapter.setPaused(true);
+  pauseMenu.classList.remove('hidden');
+}
+
+function closePauseMenu(): void {
+  pauseMenu.classList.add('hidden');
+  chapter?.setPaused(false);
+}
+
 function wire(): void {
   if (!chapter) return;
   const armTitleAudio = () => {
@@ -227,6 +248,43 @@ function wire(): void {
     helpOverlay.classList.remove('hidden');
   });
   helpClose.addEventListener('click', () => helpOverlay.classList.add('hidden'));
+
+  debugBtn.addEventListener('click', () => {
+    chapter?.audio.init();
+    chapter?.audio.play('page');
+    debugOverlay.classList.remove('hidden');
+  });
+  debugClose.addEventListener('click', () => debugOverlay.classList.add('hidden'));
+  debugOverlay.addEventListener('click', (event) => {
+    if (event.target === debugOverlay) debugOverlay.classList.add('hidden');
+  });
+  debugGrid.querySelectorAll<HTMLButtonElement>('[data-scene]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const scene = button.dataset.scene;
+      if (!scene || !chapter || !ready || started) return;
+      started = true;
+      debugOverlay.classList.add('hidden');
+      titleScreen.classList.add('hidden');
+      const ch2 = scene === 'bridge' || scene === 'boiler' || scene === 'office';
+      const chapterNo = document.getElementById('chapter-no');
+      const chapterName = document.getElementById('chapter-name');
+      const chapterNameZh = document.getElementById('chapter-name-zh');
+      if (chapterNo) chapterNo.textContent = ch2 ? '第二章' : '第一章';
+      if (chapterName) chapterName.textContent = ch2 ? '契約' : 'トンネル';
+      if (chapterNameZh) chapterNameZh.textContent = ch2 ? '契约' : '隧道';
+      chapter.audio.init();
+      chapter.audio.cinematicSwell();
+      void chapter.startDebugScene(scene);
+    });
+  });
+
+  pauseResume.addEventListener('click', () => {
+    closePauseMenu();
+    pauseResume.blur();
+  });
+  pauseHome.addEventListener('click', () => {
+    location.href = location.pathname;
+  });
   helpOverlay.addEventListener('click', (event) => {
     if (event.target === helpOverlay) helpOverlay.classList.add('hidden');
   });
@@ -263,10 +321,18 @@ function wire(): void {
   });
 
   window.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      if (!helpOverlay.classList.contains('hidden')) helpOverlay.classList.add('hidden');
-      if (!journal.classList.contains('hidden')) closeJournal();
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    if (!pauseMenu.classList.contains('hidden')) {
+      closePauseMenu();
+      return;
     }
+    // Any open utility panel is dismissed first; if the game is running, the
+    // same Escape press then opens the pause menu.
+    if (!helpOverlay.classList.contains('hidden')) helpOverlay.classList.add('hidden');
+    if (!debugOverlay.classList.contains('hidden')) debugOverlay.classList.add('hidden');
+    if (!journal.classList.contains('hidden')) closeJournal();
+    openPauseMenu();
   });
 
   window.addEventListener(

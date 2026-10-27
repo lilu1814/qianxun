@@ -626,75 +626,195 @@ function createHuman(kind: 'dad' | 'mom'): THREE.Group {
 
 function createPig(withClothes: boolean, clothedColor = 0x6d5543): THREE.Group {
   const group = new THREE.Group();
-  const pigMat = new THREE.MeshStandardMaterial({ color: 0xc98f86, roughness: 0.9 });
-  const shadeMat = new THREE.MeshStandardMaterial({ color: 0xac716b, roughness: 0.9 });
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 18, 14), pigMat);
-  body.position.y = 0.48;
-  body.scale.set(1.0, 0.78, 0.75);
-  body.castShadow = true;
-  group.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 12), pigMat);
-  head.position.set(0.42, 0.57, 0);
-  head.scale.set(0.9, 0.9, 0.9);
-  head.castShadow = true;
-  group.add(head);
-  const snout = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.16, 14), shadeMat);
-  snout.rotation.z = Math.PI / 2;
-  snout.position.set(0.69, 0.53, 0);
-  group.add(snout);
-  for (const z of [-0.06, 0.06]) {
-    const nostril = new THREE.Mesh(new THREE.CircleGeometry(0.018, 8), new THREE.MeshBasicMaterial({ color: 0x764d4a }));
-    nostril.position.set(0.775, 0.53, z);
-    nostril.rotation.y = Math.PI / 2;
-    group.add(nostril);
-  }
-  for (const z of [-0.18, 0.18]) {
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.105, 0.2, 4), pigMat);
-    ear.position.set(0.35, 0.82, z);
-    ear.rotation.z = 0.35;
-    group.add(ear);
-  }
-  for (const x of [-0.22, 0.22]) {
-    for (const z of [-0.2, 0.2]) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.075, 0.3, 8), shadeMat);
-      leg.position.set(x, 0.16, z);
+  const pigMat = new THREE.MeshStandardMaterial({ color: 0xd39a8d, roughness: 0.88 });
+  const shadeMat = new THREE.MeshStandardMaterial({ color: 0xb97a75, roughness: 0.9 });
+  const hoofMat = new THREE.MeshStandardMaterial({ color: 0x3b2b27, roughness: 0.82 });
+  const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf0e6d8, roughness: 0.55 });
+  const pupilMat = new THREE.MeshBasicMaterial({ color: 0x211816 });
+  const clothMat = new THREE.MeshStandardMaterial({ color: clothedColor, roughness: 0.94, side: THREE.DoubleSide });
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0x4a2e20, roughness: 0.9 });
+
+  const shadowed = (mesh: THREE.Mesh): THREE.Mesh => {
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    return mesh;
+  };
+
+  // The stool belongs to the pig so the seated pose remains readable after
+  // the human parents (and their own stools) disappear.
+  const stoolSeat = shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.07, 0.62), woodMat));
+  stoolSeat.position.set(0, -0.035, -0.02);
+  group.add(stoolSeat);
+  for (const x of [-0.31, 0.31]) {
+    for (const z of [-0.24, 0.2]) {
+      const leg = shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.38, 0.065), woodMat));
+      leg.position.set(x, -0.26, z);
       group.add(leg);
     }
   }
-  // eye
-  for (const z of [-0.16, 0.16]) {
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 8), new THREE.MeshBasicMaterial({ color: 0x2b1d1b }));
-    eye.position.set(0.58, 0.69, z);
-    group.add(eye);
-  }
-  // tail
-  const curve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-0.4, 0.56, 0),
-    new THREE.Vector3(-0.54, 0.65, 0.08),
-    new THREE.Vector3(-0.58, 0.74, 0.02),
-    new THREE.Vector3(-0.48, 0.79, -0.03),
-  ]);
-  const tail = new THREE.Mesh(new THREE.TubeGeometry(curve, 12, 0.025, 5, false), shadeMat);
-  group.add(tail);
-  if (withClothes) {
-    const clothMat = new THREE.MeshStandardMaterial({ color: clothedColor, roughness: 0.94, side: THREE.DoubleSide });
-    // a short shirt wrapped around the pig's torso
-    const shirt = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.39, 0.46, 16, 1, true), clothMat);
-    shirt.rotation.z = Math.PI / 2;
-    shirt.position.set(-0.03, 0.5, 0);
-    group.add(shirt);
-    const collar = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.03, 6, 14), clothMat);
-    collar.position.set(0.2, 0.52, 0);
-    collar.rotation.y = Math.PI / 2;
-    group.add(collar);
-    for (const z of [-0.18, 0.18]) {
-      const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.2, 8), clothMat);
-      sleeve.position.set(0.18, 0.34, z);
-      sleeve.rotation.z = 0.35;
-      group.add(sleeve);
+
+  // Folded hind legs hanging over the front edge of the stool.
+  for (const side of [-1, 1]) {
+    const thigh = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 10), pigMat));
+    thigh.scale.set(0.9, 0.8, 1.3);
+    thigh.position.set(side * 0.19, 0.1, 0.12);
+    thigh.rotation.x = -0.32;
+    group.add(thigh);
+    const shin = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.085, 0.28, 10), shadeMat));
+    shin.position.set(side * 0.19, -0.08, 0.27);
+    shin.rotation.x = 0.16;
+    group.add(shin);
+    const hoof = shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.085, 0.16), hoofMat));
+    hoof.position.set(side * 0.19, -0.23, 0.3);
+    group.add(hoof);
+    for (const toeX of [-0.032, 0.032]) {
+      const toe = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.036, 8, 6), shadeMat));
+      toe.scale.set(1, 0.72, 1.05);
+      toe.position.set(side * 0.19 + toeX, -0.225, 0.39);
+      group.add(toe);
     }
   }
-  group.rotation.y = -Math.PI / 2;
+
+  const hips = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.31, 18, 12), pigMat));
+  hips.scale.set(1.0, 0.72, 0.9);
+  hips.position.set(0, 0.11, -0.02);
+  group.add(hips);
+
+  const belly = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.35, 20, 14), pigMat));
+  belly.scale.set(0.96, 1.0, 0.82);
+  belly.position.set(0, 0.34, 0.02);
+  group.add(belly);
+
+  // Neck and head.
+  const neck = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 10), pigMat));
+  neck.scale.set(1, 0.85, 0.85);
+  neck.position.set(0, 0.64, 0.05);
+  group.add(neck);
+  const head = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.25, 22, 16), pigMat));
+  head.scale.set(0.98, 0.9, 0.92);
+  head.position.set(0, 0.86, 0.09);
+  group.add(head);
+  const cheekL = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 8), shadeMat));
+  cheekL.position.set(-0.15, 0.8, 0.22);
+  cheekL.scale.set(0.8, 0.75, 0.7);
+  group.add(cheekL);
+  const cheekR = cheekL.clone();
+  cheekR.position.x = 0.15;
+  group.add(cheekR);
+
+  // Snout, nostrils and a small mouth.
+  const snout = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.125, 0.15, 0.16, 16), shadeMat));
+  snout.rotation.x = Math.PI / 2;
+  snout.position.set(0, 0.8, 0.32);
+  group.add(snout);
+  const snoutDisc = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.105, 0.035, 16), pigMat));
+  snoutDisc.rotation.x = Math.PI / 2;
+  snoutDisc.position.set(0, 0.8, 0.405);
+  group.add(snoutDisc);
+  for (const x of [-0.043, 0.043]) {
+    const nostril = new THREE.Mesh(new THREE.CircleGeometry(0.018, 10), new THREE.MeshBasicMaterial({ color: 0x68433e }));
+    nostril.position.set(x, 0.8, 0.425);
+    group.add(nostril);
+  }
+  const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.014, 0.018), new THREE.MeshBasicMaterial({ color: 0x70443d }));
+  mouth.position.set(0, 0.71, 0.405);
+  group.add(mouth);
+
+  // Eyes with highlights.
+  for (const side of [-1, 1]) {
+    const eye = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), eyeWhiteMat));
+    eye.scale.set(1, 1.15, 0.62);
+    eye.position.set(side * 0.105, 0.91, 0.245);
+    group.add(eye);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.022, 10, 8), pupilMat);
+    pupil.scale.z = 0.5;
+    pupil.position.set(side * 0.1, 0.91, 0.278);
+    group.add(pupil);
+    const glint = new THREE.Mesh(new THREE.SphereGeometry(0.007, 6, 5), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    glint.position.set(side * 0.093, 0.923, 0.296);
+    group.add(glint);
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.015, 0.025), shadeMat);
+    brow.position.set(side * 0.105, 0.966, 0.24);
+    brow.rotation.z = side * -0.12;
+    group.add(brow);
+    const ear = shadowed(new THREE.Mesh(new THREE.ConeGeometry(0.085, 0.18, 5), pigMat));
+    ear.position.set(side * 0.17, 1.06, 0.05);
+    ear.rotation.z = side * 0.28;
+    ear.rotation.x = -0.16;
+    group.add(ear);
+    const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.12, 5), shadeMat);
+    innerEar.position.set(side * 0.17, 1.055, 0.065);
+    innerEar.rotation.z = side * 0.28;
+    group.add(innerEar);
+  }
+
+  // Front legs / arms resting forward.
+  for (const side of [-1, 1]) {
+    const upper = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 10), pigMat));
+    upper.scale.set(1, 1.65, 1);
+    upper.position.set(side * 0.27, 0.53, 0.08);
+    upper.rotation.z = side * -0.16;
+    group.add(upper);
+    const forearm = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.078, 0.26, 10), shadeMat));
+    forearm.rotation.x = Math.PI / 2 - 0.18;
+    forearm.position.set(side * 0.26, 0.42, 0.24);
+    group.add(forearm);
+    const hoof = shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.15), hoofMat));
+    hoof.position.set(side * 0.25, 0.37, 0.37);
+    group.add(hoof);
+    for (const toeX of [-0.026, 0.026]) {
+      const toe = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.032, 8, 6), shadeMat));
+      toe.position.set(side * 0.25 + toeX, 0.365, 0.45);
+      group.add(toe);
+    }
+  }
+
+  if (withClothes) {
+    // Shirt / cardigan over the upper belly.
+    const shirt = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.34, 22, 16), clothMat));
+    shirt.scale.set(0.94, 0.72, 0.79);
+    shirt.position.set(0, 0.47, 0.01);
+    group.add(shirt);
+    const hem = shadowed(new THREE.Mesh(new THREE.TorusGeometry(0.29, 0.035, 8, 22), clothMat));
+    hem.rotation.x = Math.PI / 2;
+    hem.position.set(0, 0.25, 0.01);
+    group.add(hem);
+    // V collar.
+    for (const side of [-1, 1]) {
+      const collar = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.19, 0.04), clothMat);
+      collar.position.set(side * 0.095, 0.62, 0.235);
+      collar.rotation.z = side * -0.5;
+      group.add(collar);
+    }
+    for (let i = 0; i < 3; i++) {
+      const button = new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 6), new THREE.MeshStandardMaterial({ color: 0x2f2922, roughness: 0.5 }));
+      button.position.set(0, 0.48 - i * 0.085, 0.285);
+      group.add(button);
+    }
+    for (const side of [-1, 1]) {
+      const sleeve = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.085, 0.15, 12), clothMat));
+      sleeve.position.set(side * 0.275, 0.6, 0.08);
+      sleeve.rotation.z = side * -0.12;
+      group.add(sleeve);
+      const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.018, 6, 12), clothMat);
+      cuff.position.set(side * 0.26, 0.5, 0.08);
+      cuff.rotation.x = Math.PI / 2;
+      group.add(cuff);
+    }
+  }
+
+  // Curly tail at the back of the stool.
+  const tailCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 0.35, -0.28),
+    new THREE.Vector3(-0.12, 0.41, -0.37),
+    new THREE.Vector3(-0.16, 0.51, -0.32),
+    new THREE.Vector3(-0.08, 0.56, -0.25),
+    new THREE.Vector3(-0.02, 0.49, -0.28),
+  ]);
+  const tail = new THREE.Mesh(new THREE.TubeGeometry(tailCurve, 18, 0.024, 6, false), shadeMat);
+  tail.castShadow = true;
+  group.add(tail);
+
   return group;
 }
 
@@ -1994,16 +2114,16 @@ export function buildTownWorld(): TownWorld {
   mom.userData.home = mom.position.clone();
   group.add(mom);
 
-  const pigA = createPig(true, 0x525b47);
-  pigA.position.set(2.1, 0.5, 12.98);
-  pigA.rotation.y = -Math.PI / 2;
-  pigA.scale.setScalar(0.92);
+  const pigA = createPig(true, 0x5c6250);
+  pigA.position.set(2.1, 0.44, 12.98);
+  pigA.rotation.y = 0;
+  pigA.scale.setScalar(0.94);
   pigA.visible = false;
   group.add(pigA);
-  const pigB = createPig(true, 0x7d5049);
-  pigB.position.set(2.1, 0.5, 16.02);
-  pigB.rotation.y = Math.PI / 2;
-  pigB.scale.setScalar(0.86);
+  const pigB = createPig(true, 0x82534c);
+  pigB.position.set(2.1, 0.44, 16.02);
+  pigB.rotation.y = Math.PI;
+  pigB.scale.setScalar(0.9);
   pigB.visible = false;
   group.add(pigB);
 
@@ -4576,6 +4696,9 @@ export function meadowPathX(z: number): number {
   return Math.sin(z * 0.11) * 2.55 + Math.sin(z * 0.045) * 1.15;
 }
 
+const MEADOW_CREEK_Z = 24;
+const MEADOW_CREEK_HALF_WIDTH = 1.75;
+
 export function meadowHeightAt(x: number, z: number): number {
   const base = z * 0.27;
   const rolling =
@@ -4584,7 +4707,10 @@ export function meadowHeightAt(x: number, z: number): number {
     Math.sin((x + z) * 0.055) * 0.36;
   const center = meadowPathX(z);
   const flatten = Math.exp(-Math.pow((x - center) / 4.0, 2));
-  return base + rolling * (1 - flatten * 0.86) - 0.22;
+  // Carve a shallow channel across the middle of the meadow. The power-of-four
+  // falloff keeps the banks soft while making a real bed below the water.
+  const creek = Math.exp(-Math.pow((z - MEADOW_CREEK_Z) / 2.15, 4)) * 1.6;
+  return base + rolling * (1 - flatten * 0.86) - 0.22 - creek;
 }
 
 function makeGrassTuftGeometry(): THREE.BufferGeometry {
@@ -4835,12 +4961,17 @@ export interface MeadowWorld {
   statueTrigger: THREE.Vector3;
   marketTrigger: THREE.Vector3;
   heightAt: (x: number, z: number) => number;
+  creekZ: number;
+  creekHalfWidth: number;
+  creekWater: THREE.Mesh;
   clouds: THREE.Group[];
   pollen: THREE.Points;
 }
 
 export function buildMeadowWorld(): MeadowWorld {
   const group = new THREE.Group();
+  const creekZ = MEADOW_CREEK_Z;
+  const creekHalfWidth = MEADOW_CREEK_HALF_WIDTH;
   const sunDir = new THREE.Vector3(0.3, 0.62, 0.72);
   group.add(makeSky('#288fd2', '#8fd8e8', '#b9dcc0', '#fff4cf', sunDir));
   group.add(sunSprite(sunDir, 36, 0.84));
@@ -4942,6 +5073,84 @@ export function buildMeadowWorld(): MeadowWorld {
     group.add(stone);
   }
 
+  // A shallow creek cuts across the middle of the meadow. The water follows
+  // the rolling terrain and makes the player wade through the ford.
+  const creekPoints: THREE.Vector3[] = [];
+  for (let i = 0; i <= 24; i++) {
+    const x = -28 + (i / 24) * 56;
+    creekPoints.push(new THREE.Vector3(x, meadowHeightAt(x, creekZ) + 0.18, creekZ));
+  }
+  const creekBedMat = new THREE.MeshStandardMaterial({ color: 0x3b5140, roughness: 1 });
+  const creekBed = createRibbon(
+    creekPoints.map((point) => point.clone().add(new THREE.Vector3(0, -0.04, 0))),
+    creekHalfWidth * 2.55,
+    creekBedMat,
+  );
+  creekBed.receiveShadow = true;
+  group.add(creekBed);
+
+  const creekWaterMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uShallow: { value: new THREE.Color(0x83c8c5) },
+      uDeep: { value: new THREE.Color(0x2c6f78) },
+      uFoam: { value: new THREE.Color(0xe6f5e8) },
+    },
+    vertexShader: `
+      uniform float uTime;
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        vec3 p = position;
+        p.y += sin(p.x * 1.55 + uTime * 2.1) * 0.018;
+        p.y += sin(p.z * 2.6 - uTime * 2.8) * 0.012;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform float uTime;
+      uniform vec3 uShallow;
+      uniform vec3 uDeep;
+      uniform vec3 uFoam;
+      varying vec2 vUv;
+      void main() {
+        float flow = sin(vUv.y * 30.0 - uTime * 3.4 + sin(vUv.x * 9.0 + uTime * 0.8) * 1.1);
+        float ripple = smoothstep(0.55, 1.0, sin(vUv.y * 12.0 - uTime * 2.0 + vUv.x * 4.0)) * 0.35;
+        float foam = smoothstep(0.88, 1.0, flow) * 0.5;
+        float edge = smoothstep(0.78, 0.98, vUv.x) + smoothstep(0.22, 0.02, vUv.x);
+        vec3 color = mix(uDeep, uShallow, 0.48 + ripple * 0.4);
+        color = mix(color, uFoam, clamp(foam + edge * 0.28, 0.0, 0.65));
+        gl_FragColor = vec4(color, 0.8);
+      }
+    `,
+    transparent: true,
+    side: THREE.DoubleSide,
+    depthWrite: true,
+  });
+  const creekWater = createRibbon(creekPoints, creekHalfWidth * 2, creekWaterMat);
+  creekWater.receiveShadow = true;
+  group.add(creekWater);
+
+  // The stream bed and banks stay bare: no grass tufts or reeds grow through
+  // the water surface.
+  const creekStoneMat = new THREE.MeshStandardMaterial({ color: 0x7c877b, roughness: 1, flatShading: true });
+  for (let i = 0; i < 30; i++) {
+    const x = (rand(i + 13) - 0.5) * 28;
+    const z = creekZ + (rand(i + 15) - 0.5) * creekHalfWidth * 2.2;
+    const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(0.12 + rand(i + 17) * 0.18, 0), creekStoneMat);
+    stone.position.set(x, meadowHeightAt(x, z) + 0.12, z);
+    stone.scale.y = 0.38;
+    stone.rotation.set(rand(i) * 2, rand(i + 3) * 2, rand(i + 5) * 2);
+    group.add(stone);
+  }
+  const crossingX = meadowPathX(creekZ);
+  for (let i = -2; i <= 2; i++) {
+    const x = crossingX + i * 0.62;
+    const stone = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.34, 0.11, 10), creekStoneMat);
+    stone.position.set(x, meadowHeightAt(x, creekZ) + 0.26, creekZ + (i % 2 === 0 ? -0.18 : 0.18));
+    group.add(stone);
+  }
+
   // very dense, bright grass
   const tuftGeo = makeGrassTuftGeometry();
   const tuftMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
@@ -4961,6 +5170,7 @@ export function buildMeadowWorld(): MeadowWorld {
     const z = -1 + rand(i + 8) * 47;
     const center = meadowPathX(z);
     if (Math.abs(x - center) < 1.25) continue;
+    if (Math.abs(z - creekZ) < creekHalfWidth + 1.55) continue;
     const y = meadowHeightAt(x, z);
     dummy.position.set(x, y, z);
     dummy.rotation.set(0, rand(i + 11) * TAU, 0);
@@ -4984,7 +5194,7 @@ export function buildMeadowWorld(): MeadowWorld {
     const x = (rand(i + 41) - 0.5) * 52;
     const z = rand(i + 47) * 46;
     const center = meadowPathX(z);
-    if (Math.abs(x - center) < 1.3) {
+    if (Math.abs(x - center) < 1.3 || Math.abs(z - creekZ) < creekHalfWidth + 1.55) {
       flowers.setMatrixAt(i, new THREE.Matrix4().makeScale(0, 0, 0));
       continue;
     }
@@ -5040,31 +5250,32 @@ export function buildMeadowWorld(): MeadowWorld {
 
   // tiny distant market on the hill crest
   const houses = [
-    [-22, 64, 0x54715c, 0x303c37],
-    [-14, 67, 0xc1ae88, 0x39463f],
-    [12, 66, 0x65836d, 0x2f3b38],
-    [20, 70, 0xb29c77, 0x3b4740],
-    [-28, 74, 0x8a7a64, 0x313b38],
-    [2, 72, 0xc6b08a, 0x2e3a36],
-    [26, 76, 0x5e7a64, 0x303b37],
-    [-5, 78, 0xa58e6d, 0x36423c],
+    [-22, 86, 0x54715c, 0x303c37],
+    [-14, 89, 0xc1ae88, 0x39463f],
+    [12, 88, 0x65836d, 0x2f3b38],
+    [20, 92, 0xb29c77, 0x3b4740],
+    [-28, 96, 0x8a7a64, 0x313b38],
+    [2, 94, 0xc6b08a, 0x2e3a36],
+    [26, 98, 0x5e7a64, 0x303b37],
+    [-5, 100, 0xa58e6d, 0x36423c],
   ] as const;
   houses.forEach(([x, z, wall, roof], i) => {
     const house = createDistantHouse(x, z, wall, roof, i + 3);
-    house.scale.setScalar(0.72);
+    house.scale.setScalar(0.62);
     group.add(house);
   });
-  // a nearer row along the crest, so the village reads before the far ridge
+  // A crest row on the far edge of the meadow. Keeping this behind the gate
+  // and the path's end makes the village appear only at the horizon.
   const crestHouses = [
-    [-18, 58, 0x6d856f, 0x303c37],
-    [17, 60, 0xc3ad87, 0x39463f],
-    [-10, 62, 0xb9a27e, 0x37423d],
-    [21, 64, 0x6f8a73, 0x303c38],
-    [6, 66, 0xcab68f, 0x333f3a],
+    [-18, 82, 0x6d856f, 0x303c37],
+    [17, 84, 0xc3ad87, 0x39463f],
+    [-10, 86, 0xb9a27e, 0x37423d],
+    [21, 88, 0x6f8a73, 0x303c38],
+    [6, 90, 0xcab68f, 0x333f3a],
   ] as const;
   crestHouses.forEach(([x, z, wall, roof], i) => {
     const house = createDistantHouse(x, z, wall, roof, i + 41);
-    house.scale.setScalar(0.6 + (i % 2) * 0.05);
+    house.scale.setScalar(0.54 + (i % 2) * 0.04);
     group.add(house);
   });
   // a simple gate at the market approach
@@ -5168,6 +5379,9 @@ export function buildMeadowWorld(): MeadowWorld {
     statueTrigger: new THREE.Vector3(statueX, meadowHeightAt(statueX, statueZ), statueZ),
     marketTrigger: new THREE.Vector3(marketX, meadowHeightAt(marketX, marketZ), marketZ),
     heightAt: meadowHeightAt,
+    creekZ,
+    creekHalfWidth,
+    creekWater,
     clouds,
     pollen,
   };

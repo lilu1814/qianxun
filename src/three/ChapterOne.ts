@@ -171,6 +171,8 @@ export class ChapterOne3D {
   private stepGlowTexture = makeGlowTexture();
   private parentProgress = 0;
   private parentsAuto = false;
+  private meadowInCreek = false;
+  private meadowCrossedCreek = false;
   private parentWalkPhase = 0;
 
   private transforming = false;
@@ -428,6 +430,7 @@ export class ChapterOne3D {
 
   setChapter(chapter: 1 | 2): void {
     this.chapterNumber = chapter;
+    this.ui.setVoiceChapter(chapter);
   }
 
   setOutfit(outfit: 'casual' | 'work'): void {
@@ -1043,6 +1046,7 @@ export class ChapterOne3D {
 
   async begin(): Promise<void> {
     if (this.phase !== 'title') return;
+    this.ui.setVoiceChapter(1);
     if (this.chapterNumber === 2) {
       await this.beginChapterTwo();
       return;
@@ -1134,6 +1138,8 @@ export class ChapterOne3D {
   }
 
   private async enterMeadow(): Promise<void> {
+    this.meadowInCreek = false;
+    this.meadowCrossedCreek = false;
     this.setWorld('meadow');
     this.player.position.copy(this.meadow.playerStart);
     this.player.rotation.y = 0;
@@ -1147,6 +1153,7 @@ export class ChapterOne3D {
     this.snapCamera();
     await this.ui.fade(false, 1000);
     this.audio.setMood('day');
+    this.audio.startCreek();
     this.cutscene = false;
     this.movementEnabled = true;
     await this.ui.narrate('トンネルの先は来た道ではなく、陽に照らされた草原だった。');
@@ -1159,6 +1166,7 @@ export class ChapterOne3D {
     await this.ui.say('千尋', '見られてる……');
     this.memories.push('石像の草原を抜け、遠くの市場へ向かった。');
     this.movementEnabled = true;
+    this.ui.setObjective('小川を渡って、草原の奥へ');
     await this.waitForReach(this.meadow.marketTrigger, 3.2);
     this.movementEnabled = false;
     this.cutscene = true;
@@ -1261,6 +1269,70 @@ export class ChapterOne3D {
     this.cutscene = false;
     this.movementEnabled = true;
     this.ui.setObjective('市街の奥へ進む');
+  }
+
+  /** Homepage debug menu: jump to a scene and continue its normal story. */
+  async startDebugScene(scene: string): Promise<void> {
+    if (scene === 'field') {
+      this.chapterNumber = 1;
+      this.phase = 'title';
+      this.ui.setVoiceChapter(1);
+      await this.begin();
+      return;
+    }
+    const chapterNumber: 1 | 2 = scene === 'bridge' || scene === 'boiler' || scene === 'office' ? 2 : 1;
+    this.chapterNumber = chapterNumber;
+    this.phase = 'playing';
+    this.paused = false;
+    this.ui.setActive(true);
+    this.ui.showHud(true);
+    this.ui.setVoiceChapter(chapterNumber);
+    this.ui.hideDialogue();
+    this.ui.hideInteractHint();
+    this.ui.hideBreathHint();
+    this.ui.hideObjective();
+    this.audio.init();
+    this.audio.stopTheme(0);
+    this.audio.stopCreek();
+    this.cutscene = false;
+    this.movementEnabled = false;
+    this.breathActive = false;
+    this.interactTarget = null;
+    this.reachTarget = null;
+    this.playerVisible = true;
+    this.player.visible = true;
+
+    if (scene === 'tunnel') {
+      await this.enterTunnel();
+    } else if (scene === 'meadow') {
+      await this.enterMeadow();
+    } else if (scene === 'town') {
+      await this.enterTown();
+    } else if (scene === 'stairs') {
+      this.townTime = 1;
+      this.townNight = true;
+      this.townMood = 'night';
+      this.town.setTime(1);
+      this.applyTownFog();
+      this.setWorld('town');
+      this.town.humanParents.forEach((human) => { human.visible = false; });
+      this.town.pigs.forEach((pig) => { pig.visible = false; });
+      this.bathhouse.haku.visible = true;
+      this.audio.playTheme('/audio/nobody_diner.mp3', 0.38);
+      this.audio.setMood('night');
+      this.ui.setObjective('', false);
+      this.cutscene = true;
+      this.movementEnabled = false;
+      await this.ui.fade(true, 0);
+      await this.meetHakuAtStairs();
+      this.finishChapter();
+    } else if (scene === 'bridge') {
+      await this.enterBridge(true);
+    } else if (scene === 'boiler') {
+      await this.enterBoiler();
+    } else if (scene === 'office') {
+      await this.enterOffice();
+    }
   }
 
   private async enterTown(): Promise<void> {
@@ -1376,6 +1448,7 @@ export class ChapterOne3D {
 
   async beginChapterTwo(): Promise<void> {
     if (this.phase !== 'title') return;
+    this.ui.setVoiceChapter(2);
     this.chapterNumber = 2;
     this.phase = 'playing';
     this.ui.setActive(true);
@@ -1538,6 +1611,7 @@ export class ChapterOne3D {
   }
 
   private async enterBoiler(): Promise<void> {
+    this.setWorld('bathhouse');
     this.audio.playTheme('/audio/boiler_bug.mp3', 0.45);
     this.bathStage = 'boiler';
     this.bathhouse.setStage('boiler');
@@ -1820,6 +1894,7 @@ export class ChapterOne3D {
   }
 
   private async enterOffice(): Promise<void> {
+    this.setWorld('bathhouse');
     this.bathStage = 'office';
     this.bathhouse.setStage('office');
     this.fillLight.intensity = 1.1;
@@ -1910,6 +1985,7 @@ export class ChapterOne3D {
   }
 
   private setWorld(name: WorldName): void {
+    if (name !== 'meadow') this.audio.stopCreek();
     this.world = name;
     this.field.group.visible = name === 'field';
     this.tunnel.group.visible = name === 'tunnel';
@@ -2222,7 +2298,7 @@ export class ChapterOne3D {
       this.town.humanParents.forEach((p) => (p.visible = false));
       this.town.pigs.forEach((p, i) => {
         p.visible = true;
-        p.position.y = 0.5;
+        p.position.y = 0.44;
         p.scale.setScalar(i === 0 ? 0.25 : 0.23);
       });
       this.ui.flash('red');
@@ -2313,7 +2389,8 @@ export class ChapterOne3D {
         direction.normalize();
         this.moveTarget = null;
         const baseSpeed = this.world === 'meadow' ? 3.0 : 2.7;
-        const speed = input.forward < -0.05 ? 1.8 : running ? 4.35 : baseSpeed;
+        const inCreek = this.world === 'meadow' && Math.abs(this.player.position.z - this.meadow.creekZ) < this.meadow.creekHalfWidth + 0.15;
+        const speed = (input.forward < -0.05 ? 1.8 : running ? 4.35 : baseSpeed) * (inCreek ? 0.55 : 1);
         const next = this.player.position.clone().addScaledVector(direction, speed * inputMagnitude * dt);
         this.clampPlayerPosition(next);
         this.player.position.copy(next);
@@ -2333,11 +2410,29 @@ export class ChapterOne3D {
           const desiredHeading = Math.atan2(toTarget.x, toTarget.z);
           this.player.rotation.y = smoothAngle(this.player.rotation.y, desiredHeading, 1 - Math.exp(-dt * 7));
           const baseSpeed = this.world === 'meadow' ? 3.0 : 2.7;
-          const speed = running ? 4.35 : baseSpeed;
+          const inCreek = this.world === 'meadow' && Math.abs(this.player.position.z - this.meadow.creekZ) < this.meadow.creekHalfWidth + 0.15;
+          const speed = (running ? 4.35 : baseSpeed) * (inCreek ? 0.55 : 1);
           const next = this.player.position.clone().addScaledVector(toTarget, speed * dt);
           this.clampPlayerPosition(next);
           this.player.position.copy(next);
           walking = true;
+        }
+      }
+    }
+
+    if (this.world === 'meadow') {
+      const creekDist = Math.abs(this.player.position.z - this.meadow.creekZ);
+      const inCreek = creekDist < this.meadow.creekHalfWidth + 0.15;
+      if (inCreek && !this.meadowInCreek) {
+        this.meadowInCreek = true;
+        this.audio.play('splash');
+      } else if (!inCreek && this.meadowInCreek) {
+        this.meadowInCreek = false;
+        this.audio.play('splash');
+        if (this.player.position.z > this.meadow.creekZ && !this.meadowCrossedCreek) {
+          this.meadowCrossedCreek = true;
+          this.ui.toast('小川を渡った', 1400);
+          this.ui.setObjective('草原を抜けて、市場へ');
         }
       }
     }
@@ -2383,11 +2478,12 @@ export class ChapterOne3D {
   }
 
   private spawnStepPuff(): void {
+    const inCreek = this.world === 'meadow' && Math.abs(this.player.position.z - this.meadow.creekZ) < this.meadow.creekHalfWidth + 0.15;
     const material = new THREE.SpriteMaterial({
       map: this.stepGlowTexture,
-      color: this.world === 'field' ? 0xcdb88b : this.world === 'tunnel' ? 0x9a876b : 0x8f7963,
+      color: inCreek ? 0xa7d9d5 : this.world === 'field' ? 0xcdb88b : this.world === 'tunnel' ? 0x9a876b : 0x8f7963,
       transparent: true,
-      opacity: 0.18,
+      opacity: inCreek ? 0.34 : 0.18,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
@@ -2486,6 +2582,11 @@ export class ChapterOne3D {
       });
       this.meadow.pollen.rotation.y += dt * 0.01;
       this.meadow.pollen.position.y = Math.sin(t * 0.35) * 0.12;
+      const creekMat = this.meadow.creekWater.material as THREE.ShaderMaterial;
+      if (creekMat.uniforms?.uTime) creekMat.uniforms.uTime.value = t;
+      const creekDistance = Math.abs(this.player.position.z - this.meadow.creekZ);
+      const creekAmount = THREE.MathUtils.clamp(1 - Math.max(0, creekDistance - 2.5) / 15, 0, 1);
+      this.audio.setCreek(creekAmount);
     } else if (this.world === 'bathhouse') {
       this.bathhouse.update(t, dt);
       this.hakuMixer?.update(dt);
