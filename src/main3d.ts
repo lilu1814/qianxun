@@ -30,7 +30,6 @@ const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
 const continueBtn = document.getElementById('continue-btn') as HTMLButtonElement;
 const helpBtn = document.getElementById('chapters-btn') as HTMLButtonElement;
 const chaptersLink = document.getElementById('chapters-link') as HTMLButtonElement;
-const debugBtn = document.getElementById('debug-btn') as HTMLButtonElement;
 const debugOverlay = document.getElementById('debug-menu')!;
 const debugGrid = document.getElementById('debug-grid')!;
 const debugClose = document.getElementById('debug-close') as HTMLButtonElement;
@@ -158,19 +157,6 @@ async function boot(): Promise<void> {
   wire();
   if (save?.completed) setButtonText(startBtn, '第一章をもう一度', '重温第一章');
 
-  // The scene selector is intentionally hidden from the normal title menu.
-  // Add ?menu=1 (or ?levels=1 / ?select=1) to expose and open it.
-  const levelMenuRequested = ['1', 'true', 'scenes', 'levels', 'debug'].includes(
-    (params.get('menu') ?? params.get('levels') ?? params.get('select') ?? '').toLowerCase(),
-  );
-  debugBtn.classList.toggle('hidden', !levelMenuRequested);
-  // Keep a visible entry on the title page; the menu itself remains query-driven.
-  chaptersLink.classList.toggle('hidden', levelMenuRequested);
-  if (levelMenuRequested) {
-    debugOverlay.classList.remove('hidden');
-    return;
-  }
-
   const directScene = params.get('scene');
   if (directScene === 'town' || directScene === 'market') {
     started = true;
@@ -261,7 +247,7 @@ function wire(): void {
   chaptersLink.addEventListener('click', () => {
     chapter?.audio.init();
     chapter?.audio.play('page');
-    location.href = `${location.pathname}?menu=1`;
+    debugOverlay.classList.remove('hidden');
   });
 
   helpBtn.addEventListener('click', () => {
@@ -270,11 +256,6 @@ function wire(): void {
   });
   helpClose.addEventListener('click', () => helpOverlay.classList.add('hidden'));
 
-  debugBtn.addEventListener('click', () => {
-    chapter?.audio.init();
-    chapter?.audio.play('page');
-    debugOverlay.classList.remove('hidden');
-  });
   debugClose.addEventListener('click', () => debugOverlay.classList.add('hidden'));
   debugOverlay.addEventListener('click', (event) => {
     if (event.target === debugOverlay) debugOverlay.classList.add('hidden');
