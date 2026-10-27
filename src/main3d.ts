@@ -29,7 +29,6 @@ const titleScreen = document.getElementById('title-screen')!;
 const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
 const continueBtn = document.getElementById('continue-btn') as HTMLButtonElement;
 const helpBtn = document.getElementById('chapters-btn') as HTMLButtonElement;
-const chaptersLink = document.getElementById('chapters-link') as HTMLButtonElement;
 const debugOverlay = document.getElementById('debug-menu')!;
 const debugGrid = document.getElementById('debug-grid')!;
 const debugClose = document.getElementById('debug-close') as HTMLButtonElement;
@@ -155,7 +154,12 @@ async function boot(): Promise<void> {
   titleScreen.classList.remove('hidden');
   setupMenu();
   wire();
-  if (save?.completed) setButtonText(startBtn, '第一章をもう一度', '重温第一章');
+
+  const sceneMenuRequested = (params.get('menu') ?? '').toLowerCase() === '1';
+  if (sceneMenuRequested) {
+    debugOverlay.classList.remove('hidden');
+    return;
+  }
 
   const directScene = params.get('scene');
   if (directScene === 'town' || directScene === 'market') {
@@ -175,12 +179,13 @@ async function boot(): Promise<void> {
 }
 
 function setupMenu(): void {
-  const canContinue = Boolean(save?.chapter2Unlocked);
-  continueBtn.classList.toggle('hidden', !canContinue);
-  if (canContinue) {
-    setButtonText(continueBtn, save?.chapter2Completed ? '第二章をもう一度' : '第二章を続ける', save?.chapter2Completed ? '重温第二章' : '继续第二章');
-  }
-  setButtonText(startBtn, save?.completed ? '第一章をもう一度' : 'トンネルへ', save?.completed ? '重温第一章' : '走入隧道');
+  continueBtn.classList.remove('hidden');
+  setButtonText(
+    continueBtn,
+    save?.chapter2Completed ? '第二章をもう一度' : save?.chapter2Unlocked ? '第二章を続ける' : '第二章 契約',
+    save?.chapter2Completed ? '重温第二章' : save?.chapter2Unlocked ? '继续第二章' : '第二章 · 契约',
+  );
+  setButtonText(startBtn, save?.completed ? '第一章をもう一度' : '第一章 トンネル', save?.completed ? '重温第一章' : '第一章 · 隧道');
   helpList.innerHTML = '';
   const helps = [
     { key: 'W / A / S / D', label: '移動', detail: 'A / D で左右、W / S で前後に歩きます。Shiftを押すと速く歩けます。', labelZh: '移动', detailZh: 'A / D 左右移动，W / S 前进 / 后退。按住 Shift 可以快走。' },
@@ -243,12 +248,6 @@ function wire(): void {
     location.href = `${location.pathname}?autoplay=2`;
   });
   window.addEventListener('qianxun:name-card', () => chapter?.audio.play('stamp'));
-
-  chaptersLink.addEventListener('click', () => {
-    chapter?.audio.init();
-    chapter?.audio.play('page');
-    debugOverlay.classList.remove('hidden');
-  });
 
   helpBtn.addEventListener('click', () => {
     chapter?.audio.play('page');

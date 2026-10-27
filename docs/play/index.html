@@ -7,9 +7,9 @@
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="description" content="『千と千尋の神隠し』同人3Dインタラクティブストーリー：第一章「トンネル」、第二章「契約」。古い門から湯屋へ、神隠しが始まる。" />
     <title>神隠し · 千と千尋の神隠し｜第一・二章</title>
-    <script type="module" crossorigin src="./assets/main-lzuFwltJ.js"></script>
+    <script type="module" crossorigin src="./assets/main-B0rKPkGR.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/three.module-Dp9HODBv.js">
-    <link rel="stylesheet" crossorigin href="./assets/main-vVzGnx4_.css">
+    <link rel="stylesheet" crossorigin href="./assets/main-BfrV1lud.css">
   </head>
   <body>
     <main id="app">
@@ -40,7 +40,10 @@
           <div id="speaker" class="speaker"><span id="speaker-name"></span><small id="speaker-zh" class="speaker-zh"></small></div>
           <p id="dialogue-text" class="dialogue-text"></p>
           <p id="dialogue-translation" class="dialogue-translation hidden" lang="zh-CN"></p>
-          <div class="continue-mark" aria-hidden="true"><span></span></div>
+          <div class="continue-mark" aria-hidden="true">
+            <span class="continue-copy">スペースで続ける<small>按空格键继续</small></span>
+            <span class="continue-chevron"></span>
+          </div>
         </div>
 
         <div id="choices" class="choices hidden" role="group" aria-label="選択肢"></div>
@@ -109,9 +112,8 @@
             <p class="title-tag">自分の名前を忘れないで。</p>
             <p class="title-tag-zh">不要忘记自己的名字。</p>
             <nav class="title-menu" aria-label="メインメニュー">
-              <button id="start-btn" class="ink-btn primary"><span>トンネルへ</span><i>走入隧道</i></button>
-              <button id="continue-btn" class="ink-btn hidden"><span>旅を続ける</span><i>继续旅程</i></button>
-              <button id="chapters-link" class="ink-btn"><span>章を選ぶ</span><i>章节选择</i></button>
+              <button id="start-btn" class="ink-btn primary"><span>第一章 トンネル</span><i>第一章 · 隧道</i></button>
+              <button id="continue-btn" class="ink-btn"><span>第二章 契約</span><i>第二章 · 契约</i></button>
               <button id="chapters-btn" class="ink-btn"><span>遊び方</span><i>操作说明</i></button>
             </nav>
             <div class="title-foot">

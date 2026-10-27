@@ -301,9 +301,11 @@ button:focus-visible {
   position: absolute;
   right: clamp(18px, 2.2vw, 34px);
   bottom: clamp(13px, 1.6vw, 23px);
-  width: 18px;
-  height: 18px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.2s;
 }
 
@@ -312,15 +314,31 @@ button:focus-visible {
   animation: continue-float 1.7s ease-in-out infinite;
 }
 
-.continue-mark span {
-  position: absolute;
-  left: 50%;
-  top: 50%;
+.continue-copy {
+  color: rgba(225, 207, 174, 0.62);
+  font-family: var(--sans);
+  font-size: clamp(8px, 0.72vw, 11px);
+  line-height: 1.25;
+  letter-spacing: 0.08em;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.continue-copy small {
+  display: block;
+  color: rgba(194, 185, 166, 0.45);
+  font-size: 0.82em;
+  letter-spacing: 0.04em;
+}
+
+.continue-chevron {
+  position: relative;
   width: 8px;
   height: 8px;
+  flex: 0 0 auto;
   border-right: 1px solid var(--gold);
   border-bottom: 1px solid var(--gold);
-  transform: translate(-50%, -70%) rotate(45deg);
+  transform: translateY(-2px) rotate(45deg);
 }
 
 @keyframes continue-float {
